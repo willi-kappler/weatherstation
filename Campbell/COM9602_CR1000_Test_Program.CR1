@@ -1,0 +1,62 @@
+'CR6 Series Datalogger
+
+'This is a Test program that sends data from the Datalogger to the COM9602 Satelite
+'communcation module for transmission via the Iridium satellite network.
+
+'Serial port for communications
+Const SBDComPort = COM1
+
+'Define how many data tables are to be sent using SBD communications
+Const NumberDataTables=0
+
+'A flag that will perform an initialization on the Modem to disable handshaking
+Public InitializeModem As Boolean
+Public SBD_TestTransmissionFlag As Boolean
+
+'This public text from the COM9602 subroutine can be viewed or stored for diagnostics.
+Public COM9602_ResultString As String *50
+
+Dim DataTableCount As Long
+Dim cntr2 As Long
+
+Include "CPU:Com9602-CR1000_Sub_str_Enc.CR1"
+
+BeginProg
+  'A USR Drive is required for the COM9602 subroutine to store some temporary files.
+  SetStatus ("USRDriveSize",32768)
+
+  'Setup communication port for the COM9602
+  SerialOpen (SBDComPort,19200,3,0,400)
+
+  'Perform modem initialization
+  InitializeModem = True
+
+  'Configure the power control port for the COM9602 as an output
+  'Set C3 as output
+  PortsConfig (&B100,&B100)
+
+  SlowSequence
+  Scan (60,Sec,0,0)
+    If SBD_TestTransmissionFlag = True Then
+
+      'Set Flag false so that only one test transmission is sent
+      SBD_TestTransmissionFlag = False
+
+      'Turn on power
+      WriteIO (&B100,&B100)
+      'wait for warmup
+      Delay(1,2,sec)
+
+      'Call the test subroutine
+      Call SBD_TestTransmission(SBDComPort,COM9602_ResultString)
+
+      Delay(1,1,sec)
+      WriteIO (&B100,&B000)
+      'Must delay 1 second for modem to power off fully
+      Delay(1,2,sec)
+    EndIf
+
+  NextScan
+EndProg
+
+
