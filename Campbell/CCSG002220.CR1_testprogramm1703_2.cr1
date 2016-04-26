@@ -1,0 +1,319 @@
+'W/O:  CCSG002220
+'Customer:  Universitaet Tuebingen
+'Date:  21st December 2015
+'Program author:  P.Goodall
+'Campbell Scientific Contact:  Kai Schoenfeld
+'
+'Program used to test your weather station.
+'Please note the following important information:
+'Use the test program as a starting point, you will need to adapt it to suit your own application.
+'
+'Please note : Unable to test Iridium modem set fully as no SIM card available
+'
+'-Wiring For CR1000-
+'
+'  HC2S3 (panel switched power)
+'    1H:  Brown
+'    1L:  White
+'    AG:  Yellow
+'    G:  Grey
+'    G:  Clear
+'    SW-12:  Green
+'
+'  CS300 Pyranometer
+'    AG:  Black
+'    2H:  Red
+'    G:  Clear
+'
+'  CS655 Water Content Reflectometer (VWC, EC, T, P, PA, AND VR)
+'    G:  Black
+'    G:  Clear
+'    G:  Orange
+'    12V:  Red
+'    C1:  Green
+'
+'  WindSonic4 (SDI-12) Two Dimensional Ultrasonic Wind Sensor
+'    G:  Clear
+'    G:  Black
+'    12V:  Red
+'    C3:  Green
+'
+'  ARG100 Rain Gauge (CSL)
+'    AG:  Clear
+'    P1:  Black
+'
+'  CS100 Barometric Pressure Sensor
+'    2L:  Blue
+'    AG:  Yellow
+'    G:  Clear
+'    G:  Black
+'    12V:  Red
+'    C2:  Green
+'
+'  9522B Iridium Satellite Modem and COM9522B Interface Modem
+'    G:  Black
+'    12V:  Red
+'    C5:  Yellow
+'
+'Declare Constants
+Const T=1  'Scan rate in Minutes.
+Const CRLF = CHR(13)+CHR(10)
+Public Result As String * 50
+Public AlarmTrigger As Boolean
+Public Message As String * 250
+
+Const SBDComPort = ComME
+Const NumberDataTables=1
+'Require a variable for when a new DataTable file for transmission is created
+Public NewTableFile(NumberDataTables) As Boolean
+Public SendSbdMessage(NumberDataTables) As Boolean
+'Require strings for the unique file names associated with the data table files
+Public TableFileName(NumberDataTables) As String * 40
+'used to send complete data definition information
+'Normally sent once after the program starts
+Public DataDefinitionFlag(NumberDataTables) As Boolean
+'A flag that will perform an initialization on the Modem to disable handshaking
+Public InitializeModem As Boolean
+
+Public SBD_TestTransmissionFlag As Boolean
+
+'This public text from the COM9602 subroutine can be viewed or stored for diagnostics.
+Public COM9602_ResultString As String *50
+
+Dim DataTableCount As Long
+Dim cntr2 As Long
+
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public AirTC
+Public RH
+Public SlrW
+Public SlrMJ
+Public CS655(6)
+Public WSData(3)
+Public N(8)
+Public Rain_mm
+'Public R_I_Hr
+'Public R_I_C
+Public BP_mbar
+Public COM9522B As Boolean
+'Variables for Iridium Configuration
+'Public SetupStr As String * 51
+'Public configure_modem As Boolean
+'Public Register_Modem
+'Public call_modem As Boolean
+
+Alias CS655(1)=VWC
+Alias CS655(2)=EC
+Alias CS655(3)=Temp
+Alias CS655(4)=P
+Alias CS655(5)=PA
+Alias CS655(6)=VR
+Alias WSData(1)=WindDir
+Alias WSData(2)=WS_ms
+Alias WSData(3)=WSDiag
+Alias N(1)=SmplsF
+Alias N(2)=Diag1F
+Alias N(3)=Diag2F
+Alias N(4)=Diag4F
+Alias N(5)=Diag8F
+Alias N(6)=Diag9F
+Alias N(7)=Diag10F
+Alias N(8)=NNDF
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units AirTC=Deg C
+Units RH=%
+Units SlrW=W/m²
+Units SlrMJ=MJ/m²
+Units Rain_mm=mm
+Units BP_mbar=mbar
+Units VWC=m³/m³
+Units EC=dS/m
+Units Temp=Deg C
+Units P=unitless
+Units PA=nSec
+Units VR=unitless
+Units WindDir=degrees
+Units WS_ms=meters/second
+Units WSDiag=unitless
+
+'Define Data Tables
+DataTable(Table1,True,-1)
+  DataInterval(0,30,Min,10)
+  TableFile ("USR:Table1",1,0,1,720,Min,NewTableFile(1),TableFileName(1))
+  CardOut(0,-1)
+  Average(1,BattV,FP2,False)
+  'Average(1,PTemp_C,FP2,False)
+  Average(1,AirTC,FP2,False)
+  Sample(1,RH,FP2)
+  Average(1,SlrW,FP2,False)
+  Totalize(1,SlrMJ,IEEE4,False)
+  Average(1,VWC,FP2,False)
+  Average(1,EC,FP2,False)
+  Average(1,Temp,FP2,False)
+  Average(1,P,FP2,False)
+  Average(1,PA,FP2,False)
+  Average(1,VR,FP2,False)
+  'WindVector(1,WS_ms,WindDir,FP2,False,0,0,1)
+  Average(1,WS_ms,FP2,False)
+  Average(1,WindDir,FP2,False)
+ ' FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
+  'Sample(1,WSDiag,FP2)
+  Totalize(1,Rain_mm,FP2,False)
+  Average(1,BP_mbar,FP2,False)
+EndTable
+
+DataTable(Table2,True,-1)
+  DataInterval(0,1440,Min,10)
+  Minimum(1,BattV,FP2,False,False)
+EndTable
+
+Include "CPU:Com9602 CR1000_Sub_str_Enc.CR1"
+'Main Program
+BeginProg
+  'A USR Drive is required for the COM9602 subroutine to store some temporary files.
+  SetStatus ("USRDriveSize",32768)
+  DataDefinitionFlag(1) = True
+  'Iridium Configuration
+  'Ensure the control port used to trigger power to the modem is set as an output.
+  'control port 5 is used to turn power on/off For the modem.
+  PortSet (5,1)
+  PortSet (5,0)
+
+  'Main Scan
+  Scan(60,Sec,1,0)
+    'COM9522B=status.PortStatus(5,1)
+
+    'Default Datalogger Battery Voltage measurement 'BattV'
+    Battery(BattV)
+    'Default Wiring Panel Temperature measurement 'PTemp_C'
+   ' PanelTemp(PTemp_C,_50Hz)
+   PortSet (9,1)
+    'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
+  '  If TimeIntoInterval(20,60,Sec) Then PortSet(9,1)
+   ' If TimeIntoInterval(30,60,Sec) Then
+      VoltSe(AirTC,1,mV2500,1,0,0,_50Hz,0.1,-40)
+      VoltSe(RH,1,mV2500,2,0,0,_50Hz,0.1,0)
+      'PortSet(9,0)
+    'EndIf
+    If RH>100 AND RH<103 Then RH=100
+
+    'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
+    VoltSe(SlrW,1,mV250,3,1,0,_50Hz,1.0,0)
+    If SlrW<0 Then SlrW=0
+    SlrMJ=SlrW*(T*0.000005)  'Convert mV to MJ/m²
+    SlrW=SlrW*5.0  'Convert mV to W/m²
+
+    'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
+   ' If TimeIntoInterval(0,10,Min) Then
+      SDI12Recorder(CS655(),1,"0","M3!",1,0)
+   ' EndIf
+
+    'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
+    'Get data from WindSonic4
+    SDI12Recorder(WindDir,3,"0","R0!",1,0)
+    If WindDir=NaN Then
+      Move(WS_ms,2,WindDir,1)
+    EndIf
+    'Set diagnostic variables as needed
+    Move(SmplsF,8,0,1)
+'    Select Case WSDiag
+'    Case=0
+'      SmplsF=1
+'    Case=1
+'      Diag1F=1
+'    Case=2
+'      Diag2F=1
+'    Case=4
+'      Diag4F=1
+'    Case=8
+'      Diag8F=1
+'    Case=9
+'      Diag9F=1
+'    Case=10
+'      Diag10F=1
+'    Else
+'      NNDF=1
+'    EndSelect
+
+    'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
+    PulseCount(Rain_mm,1,1,2,0,0.2,0)
+
+    'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
+   ' If TimeIntoInterval(50,60,Sec) Then PortSet(2,1)
+    'If TimeIntoInterval(0,60,Sec) Then
+    PortSet(2,1)
+      VoltSe(BP_mbar,1,mV2500,4,1,0,_50Hz,0.2,600)
+      BP_mbar=BP_mbar*1
+     ' PortSet(2,0)
+    'EndIf
+
+    'Activate Iridium Modems at 01:00 Daily for 15 minutes each time.
+    'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
+    ' *** Use intervals that are applicable for your application ***
+
+    If TimeIntoInterval (660,1440,Min) Then PortSet (5,1)    ' Turn on modem at 11:00 every 24 hours
+    If TimeIntoInterval (705,1440,Min) Then PortSet (5,0)    ' Turn off modem at 11:45 every 24 hours
+    If TimeIntoInterval (780,1440,Min) Then PortSet (5,1)    ' Turn on modem at 13:00 every 24 hours
+    If TimeIntoInterval (825,1440,Min) Then PortSet (5,0)    ' Turn off modem at 13:45 every 24 hours
+'Allow the modem 1 minute for warm up before sending settings. Once settings are
+'sent to the modem allow another 4 minutes to ensure the modem is registered on
+'the network before attempting communications.
+If IfTime (661,1440,min) OR IfTime (780,1440,min) Then
+SerialOpen (ComME,19200,3,0,2000)
+Delay (0,1,Sec)
+'Send the correct settings
+
+InitializeModem = True
+'----------------------------------------------------------
+     If SBD_TestTransmissionFlag = True Then
+
+      'Set Flag false so that only one test transmission is sent
+      SBD_TestTransmissionFlag = False
+
+      'Turn on power
+      'WriteIO (&B100,&B100)
+      'wait for warmup
+      'Delay(1,2,sec)
+
+      'Call the test subroutine
+      Call SBD_TestTransmission(SBDComPort,COM9602_ResultString)
+
+      'Delay(1,1,sec)
+      'WriteIO (&B100,&B000)
+      'Must delay 1 second for modem to power off fully
+      Delay(1,2,sec)
+    EndIf
+
+    'The following Checks if there is a new data file created from all required outputs
+    'If a new data output exists, call a subrouting to prepare the data and tansmit it.
+    For cntr2=1 To NumberDataTables Step 1
+      If SendSbdMessage(cntr2) Then
+        'Power on the Modem according to the channel using C5
+        PortSet (5,1)
+        'wait for warmup
+        Delay(1,2,sec)
+
+        Call SendSBD(SBDComPort,TableFileName(cntr2), cntr2, InitializeModem, DataDefinitionFlag(cntr2), COM9602_ResultString)
+        'Power off the Modem
+        'Using C3
+        'wait for shutdown
+        Delay(1,1,sec)
+        PortSet (5,0)
+        'Must delay 1 second for modem to power off fully
+        Delay(1,2,sec)
+        SendSbdMessage(cntr2) = False
+        SerialClose (ComME)
+      EndIf
+    Next cntr2
+    '-------------------------------------------------
+  EndIf 
+    'Call Data Tables and Store Data
+    CallTable Table1
+    CallTable Table2
+  NextScan
+EndProg
