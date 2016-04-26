@@ -1,0 +1,431 @@
+'W/O:  CCSG002220
+'Customer:  Universitaet Tuebingen
+'Date:  21st December 2015
+'Program author:  P.Goodall
+'Campbell Scientific Contact:  Kai Schoenfeld
+'
+'Program used to test your weather station.
+'Please note the following important information:
+'Use the test program as a starting point, you will need to adapt it to suit your own application.
+'
+'Please note : Unable to test Iridium modem set fully as no SIM card available
+'
+'-Wiring For CR1000-
+'
+'  HC2S3 (panel switched power)
+'    1H:  Brown
+'    1L:  White
+'    AG:  Yellow
+'    G:  Grey
+'    G:  Clear
+'    SW-12:  Green
+'
+'  CS300 Pyranometer
+'    AG:  Black
+'    2H:  Red
+'    G:  Clear
+'
+'  CS655 Water Content Reflectometer (VWC, EC, T, P, PA, AND VR)
+'    G:  Black
+'    G:  Clear
+'    G:  Orange
+'    12V:  Red
+'    C1:  Green
+'
+'  WindSonic4 (SDI-12) Two Dimensional Ultrasonic Wind Sensor
+'    G:  Clear
+'    G:  Black
+'    12V:  Red
+'    C3:  Green
+'
+'  ARG100 Rain Gauge (CSL)
+'    AG:  Clear
+'    P1:  Black
+'
+'  CS100 Barometric Pressure Sensor
+'    2L:  Blue
+'    AG:  Yellow
+'    G:  Clear
+'    G:  Black
+'    12V:  Red
+'    C2:  Green
+'
+'  9522B Iridium Satellite Modem and COM9522B Interface Modem
+'    G:  Black
+'    12V:  Red
+'    C5:  Yellow
+'
+StationName ("SantaGracia")
+
+Const NumberDataTables=2
+'Variables for Iridium Configuration
+
+'Require a variable for when a new DataTable file for transmission is created
+Public NewTableFile(NumberDataTables) As Boolean
+Public SendSbdMessage(NumberDataTables) As Boolean
+'Require strings for the unique file names associated with the data table files
+Public TableFileName(NumberDataTables) As String * 40
+Public FileLen(NumberDataTables) As Long
+Public HeadLen(NumberDataTables) As Long
+
+'Message Sending Status Variables
+Public CIERres As String * 32
+Public SBDIres As String * 64
+Public CIERstat(2) As Long
+Public SBDIstat(5) As Long
+Public SendTime As Long
+
+Public SendFiles As Boolean
+Public FileHandle As Long
+Public ReadLength, SetupLength,SendFileCntr As Long
+Public LineCntr As Long
+Const ReadMax = 1024
+Public SendTotal, MaxSend As Long
+Public ReadString As String * ReadMax +5
+Public SetupString As String * 64
+Public CheckSumLong As Long
+Public CSB1 As String * 1
+Public CSB2 As String * 2
+
+'used to send complete data definition information
+'Normally sent once after the program starts
+Public DataDefinitionFlag(NumberDataTables) As Boolean
+
+Dim DataTableCount As Long
+Public HeadCntr, cntr2 As Long
+Public TsinceRain  As Long = 100
+Public CS655cntr As Long
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public AirTC
+Public RH
+Public PVap
+Public SlrW
+Public SlrMJ
+Public CS655(6)
+Public WSData(3)
+Public N(8)
+Public Rain_mm
+'Public R_I_Hr
+'Public R_I_C
+Public BP_mbar
+
+Alias CS655(1)=VWC
+Alias CS655(2)=EC
+Alias CS655(3)=GrTemp
+Alias CS655(4)=P
+Alias CS655(5)=PA
+Alias CS655(6)=VR
+Alias WSData(1)=WindDir
+Alias WSData(2)=WS_ms
+Alias WSData(3)=WSDiag
+Alias N(1)=SmplsF
+Alias N(2)=Diag1F
+Alias N(3)=Diag2F
+Alias N(4)=Diag4F
+Alias N(5)=Diag8F
+Alias N(6)=Diag9F
+Alias N(7)=Diag10F
+Alias N(8)=NNDF
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units AirTC=Deg C
+Units RH=%
+Units PVap=kPa
+Units SlrW=W/m²
+Units SlrMJ=MJ/m²
+Units Rain_mm=mm
+Units BP_mbar=mbar
+Units VWC=m³/m³
+Units EC=dS/m
+Units GrTemp=Deg C
+Units P=unitless
+Units PA=nSec
+Units VR=unitless
+Units WindDir=degrees
+Units WS_ms=meters/second
+Units WSDiag=unitless
+
+
+'Define Data Tables
+DataTable(SendHourly,True,-1)
+  DataInterval(0,60,min,10)
+  TableFile ("USR:SendHourly",1,0,24,0,0,NewTableFile(1),TableFileName(1))
+  Average(1,AirTC,FP2,False)
+  Sample(1,RH,FP2)
+  Average(1,SlrW,FP2,False)
+  Average(1,VWC,FP2,False)
+  Average(1,GrTemp,FP2,False)
+  Average(1,WS_ms,FP2,False)
+  Maximum(1,WS_ms,FP2,False,False)
+  FieldNames("WS_ms_max")
+  Average(1,WindDir,FP2,False)
+  Totalize(1,Rain_mm,FP2,False)
+  Average(1,BP_mbar,FP2,False)
+EndTable
+
+DataTable(SendDaily,True,-1)
+  DataInterval(0,1440,min,10)
+  TableFile ("USR:SendDaily",1,0,3,0,0,NewTableFile(2),TableFileName(2))
+  Minimum(1,BattV,FP2,False,False)
+  Sample(1,WSDiag,FP2)
+EndTable
+
+DataTable(SaveFull,True,-1)
+  DataInterval(0,30,min,10)
+  CardOut(0,536870912)
+  Average(1,BattV,FP2,False)
+  Average(1,PTemp_C,FP2,False)
+  Average(1,AirTC,FP2,False)
+  Sample(1,RH,FP2)
+  Average(1,PVap,FP2,False)
+  Average(1,SlrW,FP2,False)
+  Totalize(1,SlrMJ,IEEE4,False)
+  Average(1,VWC,FP2,False)
+  Average(1,GrTemp,FP2,False
+  Average(1,EC,FP2,False)
+  Average(1,P,FP2,False)
+  Average(1,PA,FP2,False)
+  Average(1,VR,FP2,False)
+  Average(1,WS_ms,FP2,False)
+  Maximum(1,WS_ms,FP2,False,False)
+  FieldNames("WS_ms_max")
+  Minimum(1,WS_ms,FP2,False,False)
+  FieldNames("WS_ms_min"
+  Average(1,WindDir,FP2,False)
+  WindVector(1,WS_ms,WindDir,FP2,False,0,0,1)
+  FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
+  Totalize(1,Rain_mm,FP2,False)
+  Average(1,BP_mbar,FP2,False)
+EndTable
+
+
+DataTable(RainHiRes,True,-1)
+  DataInterval(0,5,min,10)
+  DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
+  CardOut(0,536870912)
+  Totalize(1,Rain_mm,FP2,False)
+  Sample(1,VWC,FP2
+  Sample(1,GrTemp,FP2)
+EndTable
+
+DataTable(SendStat, True, -1)
+  Sample(1, ReadLength, FP2)
+  Sample(1, CIERres, String)
+  Sample(2, CIERstat(), Long)
+  Sample(1, SBDIres, String)
+  Sample(5, SBDIstat(), Long)
+  Sample(1, SendTime, FP2)
+EndTable
+
+'Define Subroutines
+Sub IridiumTx
+  Timer(1,sec,2)
+  SerialOpen(ComRS232,19200,0,0,2000)
+  'Request Result of Signal Status
+  SerialOut(ComRS232,"AT+CIER=1,0,1"+CHR(13),13,1,10)
+  'Get and process Signal Status
+  SerialIn(CIERres,ComRS232,6000,13,32)
+  SplitStr (CIERstat(),CIERres,"",2,0)
+  
+  'Create SetupString
+  SetupLength = Sprintf(SetupString,"AT+SBDWB=%d%c",ReadLength,13)
+  'Calculate Checksum
+  CheckSumLong = CheckSum(Left(ReadString,ReadLength),23,ReadLength)
+  CSB1 = CheckSumLong AND &B11111111
+  CSB2 = (CheckSumLong >> 8)  AND &B11111111
+
+  'Send Message to Modem (into MO Buffer)
+  SerialOut(ComRS232,Left(SetupString,SetupLength),"READY",1,100)
+  SerialOut(ComRS232,Left(ReadString,ReadLength)+CHR(CSB2)+CHR(CSB1),"0",1,100)
+  'Send Message
+  SerialOut(ComRS232,"AT+SBDI"+CHR(13),"", 1,10)
+  'Check successful send
+  SerialIn(SBDIres,ComRS232,10000,13,64)
+  SplitStr (SBDIstat(),SBDIres,"",5,0))
+  'Clear MO message buffer only needed when sending multiple messages in a row 
+  SerialOut(ComRS232,"AT+SBDD0"+CHR(13),"0",1,100)
+  SerialClose(ComRS232)
+  SendTime = Timer(1,sec,1)
+EndSub
+
+'Main Program
+BeginProg
+  'A USR Drive is required for the COM9602 subroutine to store some temporary files.
+  SetStatus ("USRDriveSize",32768)
+  DataDefinitionFlag() = True
+  
+  'Main Scan
+  Scan(1,min,1,0)
+    
+    'Default Datalogger Battery Voltage measurement 'BattV'
+    Battery(BattV)
+    'Default Wiring Panel Temperature measurement 'PTemp_C'
+    PanelTemp(PTemp_C,_50Hz)
+
+    'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
+    PortSet (9,1)
+    VoltSe(AirTC,1,mV2500,1,0,0,_50Hz,0.1,-40)
+    VoltSe(RH,1,mV2500,2,0,0,_50Hz,0.1,0)
+    'Trim RH value
+    If RH>100 AND RH<103 Then RH=100
+    VaporPressure(PVap,AirTC,RH)
+
+    'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
+    VoltSe(SlrW,1,mV250,3,1,0,_50Hz,1.0,0)
+    If SlrW<0 Then SlrW=0
+    SlrMJ=SlrW*(0.000005*60)  'Convert mV to MJ/m² with 60s measurement interval
+    SlrW=SlrW*5.0  'Convert mV to W/m²
+
+    'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
+    'Get data from WindSonic4
+    SDI12Recorder(WindDir,3,"0","R0!",1,0)
+    If WindDir=NaN Then
+      Move(WS_ms,2,WindDir,1)
+    EndIf
+    'Set diagnostic variables as needed
+    Move(SmplsF,8,0,1)
+    'Select Case WSDiag
+    '  Case=0
+    '    SmplsF=1
+    '  Case=1
+    '    Diag1F=1
+    '  Case=2
+    '    Diag2F=1
+    '  Case=4
+    '    Diag4F=1
+    '  Case=8
+    '    Diag8F=1
+    '  Case=9
+    '    Diag9F=1
+    '  Case=10
+    '    Diag10F=1
+    '  Else
+    '    NNDF=1
+    'EndSelect
+
+    'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
+    PulseCount(Rain_mm,1,1,2,0,0.2,0)
+    If (Rain_mm > 0.19) Then
+      TsinceRain = 0
+    Else
+      TsinceRain = TsinceRain + 1
+    EndIf
+
+    'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
+    PortSet(2,1)
+    VoltSe(BP_mbar,1,mV2500,4,1,0,_50Hz,0.2,600)
+    BP_mbar=BP_mbar*1
+    
+    'Call Data Tables and Store Data
+    CallTable SendHourly
+    CallTable SendDaily
+    CallTable SaveFull
+    CallTable RainHiRes
+    
+    For DataTableCount=1 To NumberDataTables Step 1
+       If NewTableFile(DataTableCount)=True Then
+          SendSbdMessage(DataTableCount)=True
+          NewTableFile(DataTableCount)=False
+       EndIf
+    Next DataTableCount   
+
+    'Activate Iridium Modems at 12:00 Daily for 15 minutes each time.
+    'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
+    ' *** Use intervals that are applicable for your application ***
+
+    If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
+    If TimeIntoInterval (890,1440,Min) Then 
+      PortSet (5,0)    ' Turn off modem at 14:50 every 24 hours
+      SendFiles = False
+    EndIf
+    
+    'Allow the modem 3 minutes for warm up before sending files
+    If TimeIntoInterval (873,1440,min) Then 
+      SendFiles = True 
+      SendTotal = 0
+    EndIf
+    
+    If (SendFiles=True) Then
+      'If a new data output exists, call a subroutine to prepare the data and tansmit it.
+      For cntr2=1 To NumberDataTables Step 1
+      If SendSbdMessage(cntr2) Then
+        
+        If (HeadLen(cntr2) < 0) Then
+          'Get File Size
+          'FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          'FileSizes(cntr2) = FileSize (FileHandle)
+          'FileClose(FileHandle)
+          
+          'ASCII File has 4 Header Lines
+          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          HeadLen(cntr2) = 0
+          For HeadCntr=1 To 5 Step 1
+            ReadLength =  FileReadLine(FileHandle,ReadString,ReadMax)
+            HeadLen(cntr2) += ReadLength
+          Next HeadCntr
+          FileClose(FileHandle)
+         'CallTable ReadStat
+        EndIf
+        
+        If DataDefinitionFlag(cntr2) Then
+          'Write only Header
+          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          ReadLength = FileRead (FileHandle,ReadString,HeadLen(cntr2))
+          FileClose(FileHandle)
+          Call (IridiumTx)
+          CallTable SendStat
+          
+          'Only Send Header on Startup
+          DataDefinitionFlag(cntr2) = False
+          ExitFor
+        EndIf
+        
+        FileHandle = FileOpen(TableFileName(cntr2),"rb",HeadLen(cntr2))
+        ReadLength = ReadMax
+        While ReadLength >= ReadMax
+          ReadLength = FileRead(FileHandle,ReadString,ReadMax)
+          Call (IridiumTx)
+          CallTable SendStat
+        Wend
+        FileClose(FileHandle)
+
+        SendSbdMessage(cntr2) = False
+        If (SendSbdMessage(1) = False AND SendSbdMessage(2) = False) Then
+          SendFiles = False
+          PortSet (5,0)
+        EndIf
+        
+        ExitFor
+      EndIf
+    Next cntr2
+    EndIf
+      
+   
+    
+  NextScan
+    
+  SlowSequence
+  'Ground Measurements every 15 or 30 Minutes
+  Scan(15,min,0,0)
+    'Conunter to do CS655 measurement only every 30 Minutes unless RainHiRes is saved, then every 15 Min
+    If (TsinceRain <= 30) Then
+      CS655cntr = 0
+    Else
+      CS655cntr = CS655cntr - 1
+    EndIf
+    
+    If (CS655cntr < 1) Then
+      'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
+      SDI12Recorder(CS655(),1,"0","M3!",1,0)
+      'Resest Counter
+      CS655cntr = 2
+    EndIf
+    
+  NextScan
+  EndSequence
+  
+EndProg
