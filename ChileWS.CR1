@@ -56,22 +56,26 @@
 '    C5:  Yellow
 '
 
+StationName ("Nahuelbuta")
+
 Const NumberDataTables=2
 'Variables for Iridium Configuration
 
 'Require a variable for when a new DataTable file for transmission is created
 Public NewTableFile(NumberDataTables) As Boolean
 Public SendSbdMessage(NumberDataTables) As Boolean
-
 'Require strings for the unique file names associated with the data table files
 Public TableFileName(NumberDataTables) As String * 40
+Public FileLen(NumberDataTables) As Long
+Public HeadLen(NumberDataTables) As Long
+
 Public FileHandle As Long
 Public ReadLength As Long
-Const ReadMax = 400
-Public SendString As String * ReadMax + 1
-
-
-
+Public SeekPos As Long
+Const ReadMax = 256 
+Public SendString As String * ReadMax
+Public SendTotal As Long
+Public MaxSend As Long
 
 'used to send complete data definition information
 'Normally sent once after the program starts
@@ -79,9 +83,8 @@ Public DataDefinitionFlag(NumberDataTables) As Boolean
 
 Dim DataTableCount As Long
 Dim cntr2 As Long
-Public TsinceRain As Long
+Public TsinceRain  As Long = 100
 Public CS655cntr As Long
-
 
 'Declare Variables and Units
 Public BattV
@@ -136,9 +139,9 @@ Units WSDiag=unitless
 
 
 'Define Data Tables
-DataTable(Send30Min,True,-1)
-  DataInterval(0,30,Min,10)
-  TableFile ("USR:Send30Min",1,0,48,0,0,NewTableFile(1),TableFileName(1))
+DataTable(SendHourly,True,-1)
+  DataInterval(0,120,Min,10)
+  TableFile ("USR:SendHourly",9,0,12,0,0,NewTableFile(1),TableFileName(1))
   Average(1,AirTC,FP2,False)
   Sample(1,RH,FP2)
   Average(1,SlrW,FP2,False)
@@ -154,7 +157,7 @@ EndTable
 
 DataTable(SendDaily,True,-1)
   DataInterval(0,1440,Min,10)
-  TableFile ("USR:SendDaily",1,0,1,0,0,NewTableFile(2),TableFileName(2))
+  TableFile ("USR:SendDaily",9,0,1,0,0,NewTableFile(2),TableFileName(2))
   Minimum(1,BattV,FP2,False,False)
   Sample(1,WSDiag,FP2)
 EndTable
@@ -193,8 +196,8 @@ DataTable(RainHiRes,True,-1)
   CardOut(0,1073741824)
   
   Totalize(1,Rain_mm,FP2,False)
-  Average(1,VWC,FP2,False)
-  Average(1,GrTemp,FP2,False)
+  Sample(1,VWC,FP2
+  Sample(1,GrTemp,FP2)
 EndTable
 
 'Define Subroutines
@@ -210,6 +213,10 @@ EndSub
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
   SetStatus ("USRDriveSize",32768)
+  'Estimates For Header Length
+  HeadLen(1) = 415
+  HeadLen(2) = 200
+  DataDefinitionFlag() = True
   
   'Main Scan
   Scan(60,Sec,1,0)
@@ -261,12 +268,10 @@ BeginProg
 
     'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
     PulseCount(Rain_mm,1,1,2,0,0.2,0)
-    If (Rain_mm > 0.2) Then
+    If (Rain_mm > 0.199) Then
       TsinceRain = 0
-      'SlowT = 5
     Else
       TsinceRain = TsinceRain + 1
-    '  SlowT = 10
     EndIf
 
     'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
@@ -286,19 +291,31 @@ BeginProg
     'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
 
-    If TimeIntoInterval (720,1440,Min) Then PortSet (5,1)    ' Turn on modem at 12:00 every 24 hours     
-    If TimeIntoInterval (735,1440,Min) Then PortSet (5,0)    ' Turn off modem at 01:10 every 24 hours
+    If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 12:00 every 24 hours     
+    If TimeIntoInterval (885,1440,Min) Then PortSet (5,0)    ' Turn off modem at 01:10 every 24 hours
 
     'Allow the modem 3 minutes for warm up before sending files
-    If TimeIntoInterval (723,1440,min) Then 
+    If TimeIntoInterval (873,1440,min) Then 
+      SendTotal = 0
       'If a new data output exists, call a subrouting to prepare the data and tansmit it.
       For cntr2=1 To NumberDataTables Step 1
         If SendSbdMessage(cntr2) Then
-          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          If DataDefinitionFlag(cntr2) Then
+            SeekPos = 0
+            MaxSend = 5121
+            DataDefinitionFlag(cntr2) = False
+          Else
+            MaxSend = 2049
+            SeekPos = HeadLen(cntr2)
+          EndIf
+          FileHandle = FileOpen(TableFileName(cntr2),"r",SeekPos)
           ReadLength = ReadMax
           While ReadLength >= ReadMax
             ReadLength = FileRead(FileHandle,SendString,ReadMax)
-            Call (IridiumTx)
+            If ( SendTotal + ReadLength < MaxSend ) Then
+               Call (IridiumTx)
+               SendTotal += ReadLength
+            EndIf
           Wend
           FileClose(FileHandle)
           SendSbdMessage(cntr2) = False
@@ -307,7 +324,7 @@ BeginProg
     EndIf       
     
     'Call Data Tables and Store Data
-    CallTable Send30Min
+    CallTable SendHourly
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
@@ -316,7 +333,7 @@ BeginProg
     
   SlowSequence
   'Ground Measurements every 5 or 10 Minutes
-  Scan(5,min,0,0)
+  Scan(15,min,0,0)
     'Conunter to do CS655 measurement only every 10 Minutes unless RainHiRes is saved, then every 5 Min
     If (TsinceRain <= 30) Then
       CS655cntr = 0
