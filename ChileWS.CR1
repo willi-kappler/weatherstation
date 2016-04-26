@@ -1,6 +1,6 @@
-'W/O:  CCSG002247
+'W/O:  CCSG002220
 'Customer:  Universitaet Tuebingen
-'Date:  8th February 2016
+'Date:  21st December 2015
 'Program author:  P.Goodall
 'Campbell Scientific Contact:  Kai Schoenfeld
 '
@@ -56,7 +56,7 @@
 '    C5:  Yellow
 '
 'Declare Constants
-Const T=10  'Scan rate in secs.
+Const T=1  'Scan rate in Minutes.
 
 'Declare Variables and Units
 Public BattV
@@ -76,9 +76,8 @@ Public COM9522B As Boolean
 'Variables for Iridium Configuration
 Public SetupStr As String * 51
 Public configure_modem As Boolean
-'Modem Registration
-Public Register_Modem As String
-Public Call_Modem As Boolean
+Public Register_Modem
+Public call_modem As Boolean
 
 Alias CS655(1)=VWC
 Alias CS655(2)=EC
@@ -118,10 +117,10 @@ Units WSDiag=unitless
 
 'Define Data Tables
 DataTable(Table1,True,-1)
-  DataInterval(0,60,Min,10)
+  DataInterval(0,30,Min,10)
   CardOut(0,-1)
   Average(1,BattV,FP2,False)
-  Average(1,PTemp_C,FP2,False)
+  'Average(1,PTemp_C,FP2,False)
   Average(1,AirTC,FP2,False)
   Sample(1,RH,FP2)
   Average(1,SlrW,FP2,False)
@@ -132,9 +131,11 @@ DataTable(Table1,True,-1)
   Average(1,P,FP2,False)
   Average(1,PA,FP2,False)
   Average(1,VR,FP2,False)
-  WindVector(1,WS_ms,WindDir,FP2,False,0,0,1)
-  FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
-  Sample(1,WSDiag,FP2)
+  'WindVector(1,WS_ms,WindDir,FP2,False,0,0,1)
+  Average(1,WS_ms,FP2,False)
+  Average(1,WindDir,FP2,False)
+ ' FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
+  'Sample(1,WSDiag,FP2)
   Totalize(1,Rain_mm,FP2,False)
   Average(1,BP_mbar,FP2,False)
 EndTable
@@ -153,21 +154,22 @@ BeginProg
   PortSet (5,0)
 
   'Main Scan
-  Scan(T,Sec,1,0)
+  Scan(60,Sec,1,0)
     COM9522B=status.PortStatus(5,1)
 
     'Default Datalogger Battery Voltage measurement 'BattV'
     Battery(BattV)
     'Default Wiring Panel Temperature measurement 'PTemp_C'
-    PanelTemp(PTemp_C,_50Hz)
+   ' PanelTemp(PTemp_C,_50Hz)
+   PortSet (9,1)
 
     'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
-    If TimeIntoInterval(50,60,Sec) Then PortSet(9,1)
-    If TimeIntoInterval(0,60,Sec) Then
+  '  If TimeIntoInterval(20,60,Sec) Then PortSet(9,1)
+   ' If TimeIntoInterval(30,60,Sec) Then
       VoltSe(AirTC,1,mV2500,1,0,0,_50Hz,0.1,-40)
       VoltSe(RH,1,mV2500,2,0,0,_50Hz,0.1,0)
-      PortSet(9,0)
-    EndIf
+      'PortSet(9,0)
+    'EndIf
     If RH>100 AND RH<103 Then RH=100
 
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
@@ -177,9 +179,9 @@ BeginProg
     SlrW=SlrW*5.0  'Convert mV to W/m²
 
     'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
-    If TimeIntoInterval(0,10,Min) Then
+   ' If TimeIntoInterval(0,10,Min) Then
       SDI12Recorder(CS655(),1,"0","M3!",1,0)
-    EndIf
+   ' EndIf
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'Get data from WindSonic4
@@ -189,65 +191,70 @@ BeginProg
     EndIf
     'Set diagnostic variables as needed
     Move(SmplsF,8,0,1)
-    Select Case WSDiag
-    Case=0
-      SmplsF=1
-    Case=1
-      Diag1F=1
-    Case=2
-      Diag2F=1
-    Case=4
-      Diag4F=1
-    Case=8
-      Diag8F=1
-    Case=9
-      Diag9F=1
-    Case=10
-      Diag10F=1
-    Else
-      NNDF=1
-    EndSelect
+'    Select Case WSDiag
+'    Case=0
+'      SmplsF=1
+'    Case=1
+'      Diag1F=1
+'    Case=2
+'      Diag2F=1
+'    Case=4
+'      Diag4F=1
+'    Case=8
+'      Diag8F=1
+'    Case=9
+'      Diag9F=1
+'    Case=10
+'      Diag10F=1
+'    Else
+'      NNDF=1
+'    EndSelect
 
     'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
     PulseCount(Rain_mm,1,1,2,0,0.2,0)
 
     'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
-    If TimeIntoInterval(50,60,Sec) Then PortSet(2,1)
-    If TimeIntoInterval(0,60,Sec) Then
+   ' If TimeIntoInterval(50,60,Sec) Then PortSet(2,1)
+    'If TimeIntoInterval(0,60,Sec) Then
+    PortSet(2,1)
       VoltSe(BP_mbar,1,mV2500,4,1,0,_50Hz,0.2,600)
       BP_mbar=BP_mbar*1
-      PortSet(2,0)
-    EndIf
+     ' PortSet(2,0)
+    'EndIf
 
-    'Activate Iridium Modems at Noon & Midnight Daily for 15 minutes each time.
-    'Allow modem warmup time & check settings (5 minutes) & data transmissions (10 minutes)
+    'Activate Iridium Modems at 01:00 Daily for 15 minutes each time.
+    'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
-    If TimeIntoInterval (715,720,Min) Then PortSet (5,1)
-    If TimeIntoInterval (10,720,Min) Then PortSet (5,0)
 
-    'Allow the modem 1 minute for warm up before sending settings. Once settings are
-    'sent to the modem allow another 4 minutes to ensure the modem is registered on
-    'the network before attempting communications.
-    If IfTime (716,720,min) Then configure_modem = true
-    If configure_modem = true Then
-      SerialOpen (ComRS232,19200,0,0,2000)
-      Delay (0,1,Sec)
-      'Send the correct settings
-      SetupStr = "AT&F0 S0=1 &D0 +IPR=6,0 V0 &K0 &W0 &Y0" & CHR(13) & CHR(10)
-      SerialOut (ComRS232,SetupStr,"",0,0)
-      configure_modem = false
-      SerialClose (ComRS232)
-      Call_Modem = True
-    EndIf
-    'Send ATDT dialing command from 9522B to force modem registration on Iridium Network
-    If Call_Modem = True Then
-      SerialOpen (ComRS232,19200,0,0,2000)
-      Delay (0,1, sec)
-      Register_Modem = "ATDT1234" & CHR(13) & CHR(10)
-      SerialOut (ComRS232,Register_Modem,"",0,0)
-      Call_Modem = False
-      SerialClose (ComRS232)
-    EndIf
+    If TimeIntoInterval (660,1440,Min) Then PortSet (5,1)    ' Turn on modem at 11:00 every 24 hours
+    If TimeIntoInterval (705,1440,Min) Then PortSet (5,0)    ' Turn off modem at 11:45 every 24 hours
+    
+'Allow the modem 1 minute for warm up before sending settings. Once settings are
+'sent to the modem allow another 4 minutes to ensure the modem is registered on
+'the network before attempting communications.
+If IfTime (661,720,min) Then configure_modem = true
+If configure_modem = true Then
+SerialOpen (ComME,19200,0,0,2000)
+Delay (0,1,Sec)
+'Send the correct settings
+SetupStr = "AT&F0 S0=1 &D0 +IPR=6,0 V0 &K0 &W0 &Y0" & CHR(13) & CHR(10)
+SerialOut (ComME,SetupStr,"",0,0)
+configure_modem = false
+SerialClose (ComME)
+Call_Modem = True
+EndIf
+'Send ATDT dialing command from 9522B to force modem registration on Iridium network
+If Call_Modem = True
+SerialOpen (ComME,19200,0,0,2000)
+Delay (0,1, sec)
+Register_Modem = "ATDT1234" & CHR(13) & CHR(10)
+SerialOut (ComME,Register_Modem,"",0,0)
+Call_Modem = False
+SerialClose (ComME)
+EndIf
+    
+    
+
 
     'Call Data Tables and Store Data
     CallTable Table1
