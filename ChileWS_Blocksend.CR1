@@ -80,7 +80,7 @@ Public FileHandle As Long
 Public ReadLength, SetupLength ',SendFileCntr As Long ' KU: outcommented because not used (created warning)
 'Public LineCntr As Long ' KU: outcommented because not used (created warning)
 Const ReadMax = 1024
-'Public SendTotal, MaxSend As Long ' KU: outcommented because not used (created warning)
+Public SendTotal, 'MaxSend As Long ' KU: outcommented because not used (created warning)
 Public ReadString As String * ReadMax +5
 Public SetupString As String * 64
  
