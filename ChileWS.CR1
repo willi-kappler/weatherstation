@@ -232,6 +232,9 @@ Sub IridiumTx 'KU: transmit
   'Send Message to Modem 
   SerialOut(ComRS232,"AT+SBDWT="+Left(ReadString,ReadLength)+CHR(13),"0",1,500)
   'KU: SBDWT: short burst data write text; ReadString = max. 160 simbols
+  'Question CS course: AT command, to put data into buffer before sending?
+  'Question CS course: "0": avoid waiting for "ok" as answer?
+  
   'Send Message
   SerialOut(ComRS232,"AT+SBDI"+CHR(13),13,1,100)
   'Check successful send
