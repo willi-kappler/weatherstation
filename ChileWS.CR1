@@ -329,8 +329,9 @@ BeginProg
 'KU: with 20 MInutes modem activity we are experiencing data loss.
 'KU: Email Info by Cramer (Satelite): they recommend 40-50 Minutes modem activity
 'KU: change sending time (+1 minute from round numbers) to avoid skipping of data writing due to sending at the same time
+'KU: avoid sending when battery V below 11.5 V
 
-    If TimeIntoInterval (871,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
+    If TimeIntoInterval (871,1440,Min) AND BattV > 11.5 Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
     If TimeIntoInterval (921,1440,Min) Then 
       PortSet (5,0)    ' Turn off modem 50 minutes later (at 15:20) every 24 hours
       SendFiles = False
