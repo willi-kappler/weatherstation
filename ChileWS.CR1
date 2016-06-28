@@ -55,7 +55,7 @@
 'KS:Please note : Unable to test Iridium modem set fully as no SIM card available
 'KU: explanation comments in the programme
 
-StationName ("Nahuelbuta")'always adapt before uploading to a logger
+StationName ("Nahuelbuta")'KU: always adapt before uploading to a logger
 
 Const NumberDataTables=2 'KU: 2 tables will be sent
 'Variables for Iridium Configuration
@@ -323,20 +323,21 @@ BeginProg
        EndIf
     Next DataTableCount   
 
-    'Activate Iridium Modem at 14:30 Daily for 20 minutes each time.
-    'Allow modem warm-up time & check settings (3mins), then data transmission
-    ' *** Use intervals that are applicable for your application ***
-    'KU: with 20 MInutes modem activity we are experiencing data loss.
-    'KU: Email Info by Cramer (Satelite): they recommend 40-50 Minutes modem activity
+'Activate Iridium Modem at 14:30 Daily for 20 minutes each time.
+'Allow modem warm-up time & check settings (3mins), then data transmission
+' *** Use intervals that are applicable for your application ***
+'KU: with 20 MInutes modem activity we are experiencing data loss.
+'KU: Email Info by Cramer (Satelite): they recommend 40-50 Minutes modem activity
+'KU: change sending time (+1 minute from round numbers) to avoid skipping of data writing due to sending at the same time
 
-    If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
-    If TimeIntoInterval (890,1440,Min) Then 
-      PortSet (5,0)    ' Turn off modem 20 minutes later (at 14:50) every 24 hours
+    If TimeIntoInterval (871,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
+    If TimeIntoInterval (921,1440,Min) Then 
+      PortSet (5,0)    ' Turn off modem 50 minutes later (at 15:20) every 24 hours
       SendFiles = False
     EndIf
     
     'Allow the modem 3 minutes for warm up before sending files
-    If TimeIntoInterval (873,1440,min) Then 
+    If TimeIntoInterval (874,1440,min) Then 
       SendFiles = True 
       SendTotal = 0
     EndIf
