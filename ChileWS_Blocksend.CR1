@@ -83,9 +83,10 @@ Const ReadMax = 1024
 Public SendTotal, MaxSend As Long
 Public ReadString As String * ReadMax +5
 Public SetupString As String * 64
-Public CheckSumLong As Long
-Public CSB1 As String * 1
-Public CSB2 As String * 2
+ 
+Dim TX_Checksum As Long
+Dim byteholder As Long
+Dim icnt As Long
 
 'used to send complete data definition information
 'Normally sent once after the program starts
@@ -233,14 +234,25 @@ Sub IridiumTx
   
   'Create SetupString
   SetupLength = Sprintf(SetupString,"AT+SBDWB=%d%c",ReadLength,13)
+
   'Calculate Checksum
-  CheckSumLong = CheckSum(Left(ReadString,ReadLength),23,ReadLength)
-  CSB1 = CheckSumLong AND &B11111111
-  CSB2 = (CheckSumLong >> 8)  AND &B11111111
+    If ReadLength > 0 Then
+      'Calculate the Checksum
+      TX_Checksum = 0
+      For icnt=1 To ReadLength Step 1
+        byteholder=0
+        MoveBytes (byteholder,3,ReadString(1,1,icnt),0,1)
+        'The checksum is the sum of all bytes
+        TX_Checksum = TX_Checksum + byteholder
+      Next icnt
+ 
+      'Move the checksum to the end of the outgoing data array
+      MoveBytes (ReadString(1,1,ReadLength),1,TX_Checksum,2,2)
+      EndIf
 
   'Send Message to Modem (into MO Buffer)
   SerialOut(ComRS232,Left(SetupString,SetupLength),"READY",1,100)
-  SerialOut(ComRS232,Left(ReadString,ReadLength)+CHR(CSB2)+CHR(CSB1),"0",1,100)
+  SerialOutBlock (ComRS232,ReadString(1,1,1),ReadLength + 2)
   'Send Message
   SerialOut(ComRS232,"AT+SBDI"+CHR(13),"", 1,10)
   'Check successful send
@@ -360,13 +372,14 @@ BeginProg
           'FileSizes(cntr2) = FileSize (FileHandle)
           'FileClose(FileHandle)
           
-          'ASCII File has 4 Header Lines
+          'Binary File has 5 Header Lines
           FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
           HeadLen(cntr2) = 0
           For HeadCntr=1 To 5 Step 1
             ReadLength =  FileReadLine(FileHandle,ReadString,ReadMax)
             HeadLen(cntr2) += ReadLength
           Next HeadCntr
+          HeadLen(cntr2) += 1
           FileClose(FileHandle)
          'CallTable ReadStat
         EndIf
@@ -374,6 +387,8 @@ BeginProg
         If DataDefinitionFlag(cntr2) Then
           'Write only Header
           FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          'Might need this instead if sent header is too long
+          'ReadLength = FileRead (FileHandle,ReadString,HeadLen(cntr2)-1)
           ReadLength = FileRead (FileHandle,ReadString,HeadLen(cntr2))
           FileClose(FileHandle)
           Call (IridiumTx)
