@@ -3,13 +3,7 @@
 'Date:  21st December 2015
 'Program author:  P.Goodall
 'Campbell Scientific Contact:  Kai Schoenfeld
-'
-'Program used to test your weather station.
-'Please note the following important information:
-'Use the test program as a starting point, you will need to adapt it to suit your own application.
-'
-'Please note : Unable to test Iridium modem set fully as no SIM card available
-'
+
 '-Wiring For CR1000-
 '
 '  HC2S3 (panel switched power)
@@ -55,10 +49,15 @@
 '    12V:  Red
 '    C5:  Yellow
 '
+'KS:Program used to test your weather station.
+'KS:Please note the following important information:
+'KS:Use the test program as a starting point, you will need to adapt it to suit your own application.
+'KS:Please note : Unable to test Iridium modem set fully as no SIM card available
+'KU: explanation comments in the programme
 
-StationName ("Nahuelbuta")
+StationName ("Nahuelbuta")'always adapt before uploading to a logger
 
-Const NumberDataTables=2
+Const NumberDataTables=2 'KU: 2 tables will be sent
 'Variables for Iridium Configuration
 
 'Require a variable for when a new DataTable file for transmission is created
@@ -85,7 +84,7 @@ Public SendTotal, MaxSend As Long
 Public ReadString As String * ReadMax +5
 
 'used to send complete data definition information
-'Normally sent once after the program starts
+'KU: Header sent once when programme is iniciated, further sendings: no header
 Public DataDefinitionFlag(NumberDataTables) As Boolean
 
 Dim DataTableCount As Long
@@ -93,12 +92,13 @@ Public HeadCntr, cntr2 As Long
 Public TsinceRain  As Long = 100
 Public CS655cntr As Long
 
-'Declare Variables and Units
+'Declare Variables and Units ' KU: that will be measured (not necessarily sent)
+'KU:this is where the initial Campbell programm continues
 Public BattV
-Public PTemp_C
+Public PTemp_C 'KU: Panel temperature
 Public AirTC
 Public RH
-Public PVap
+Public PVap 'KU: rH (in%) is only MEASURED every 30 Mins, Vapor pressure is AVERAGED every 30 Mins
 Public SlrW
 Public SlrMJ
 Public CS655(6)
@@ -148,8 +148,8 @@ Units WSDiag=unitless
 
 
 'Define Data Tables
-DataTable(SendHourly,True,-1)
-  DataInterval(0,180,min,10)
+DataTable(SendHourly,True,-1) 'KU: these measurements will be sent via satelite
+  DataInterval(0,180,min,10) 'KU: measurements are averaged every 180 Mins (3 h)
   TableFile ("USR:SendHourly",9,0,8,0,0,NewTableFile(1),TableFileName(1))
   Average(1,AirTC,FP2,False)
   Sample(1,RH,FP2)
@@ -164,16 +164,16 @@ DataTable(SendHourly,True,-1)
   Average(1,BP_mbar,FP2,False)
 EndTable
 
-DataTable(SendDaily,True,-1)
+DataTable(SendDaily,True,-1) 'KU: this is the second table with battery V only
   DataInterval(0,1440,min,10)
   TableFile ("USR:SendDaily",9,0,1,0,0,NewTableFile(2),TableFileName(2))
   Minimum(1,BattV,FP2,False,False)
-  Sample(1,WSDiag,FP2)
+  Sample(1,WSDiag,FP2) 'KU: help: what is WS diag? -> help is cryptic
 EndTable
 
-DataTable(SaveFull,True,-1)
+DataTable(SaveFull,True,-1) 'KU: table to be stored on local SD card
   DataInterval(0,30,min,10)
-  CardOut(0,536870912)
+  CardOut(0,536870912) 'KU: only if SD card is entered
   Average(1,BattV,FP2,False)
   Average(1,PTemp_C,FP2,False)
   Average(1,AirTC,FP2,False)
@@ -200,7 +200,7 @@ DataTable(SaveFull,True,-1)
 EndTable
 
 
-DataTable(RainHiRes,True,-1)
+DataTable(RainHiRes,True,-1) 'KU: extra rain table in high resolution in case of precipitation 
   DataInterval(0,5,min,10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
   CardOut(0,536870912)
@@ -209,7 +209,7 @@ DataTable(RainHiRes,True,-1)
   Sample(1,GrTemp,FP2)
 EndTable
 
-DataTable(SendStat, True, -1)
+DataTable(SendStat, True, -1) 'KU:Protocol of sending activity
   Sample(1, ReadLength, FP2)
   Sample(1, CIERres, String)
   Sample(2, CIERstat(), Long)
@@ -219,7 +219,7 @@ DataTable(SendStat, True, -1)
 EndTable
 
 'Define Subroutines
-Sub IridiumTx
+Sub IridiumTx 'KU: transmit
   Timer(1,sec,2)
   SerialOpen(ComRS232,19200,0,0,2000)
   'Request Result of Signal Status
@@ -231,6 +231,7 @@ Sub IridiumTx
 
   'Send Message to Modem 
   SerialOut(ComRS232,"AT+SBDWT="+Left(ReadString,ReadLength)+CHR(13),"0",1,500)
+  'KU: SBDWT: short burst data write text; ReadString = max. 160 simbols
   'Send Message
   SerialOut(ComRS232,"AT+SBDI"+CHR(13),13,1,100)
   'Check successful send
@@ -322,13 +323,15 @@ BeginProg
        EndIf
     Next DataTableCount   
 
-    'Activate Iridium Modems at 12:00 Daily for 15 minutes each time.
-    'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
+    'Activate Iridium Modem at 14:30 Daily for 20 minutes each time.
+    'Allow modem warm-up time & check settings (3mins), then data transmission
     ' *** Use intervals that are applicable for your application ***
+    'KU: with 20 MInutes modem activity we are experiencing data loss.
+    'KU: Email Info by Cramer (Satelite): they recommend 40-50 Minutes modem activity
 
     If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
     If TimeIntoInterval (890,1440,Min) Then 
-      PortSet (5,0)    ' Turn off modem at 14:50 every 24 hours
+      PortSet (5,0)    ' Turn off modem 20 minutes later (at 14:50) every 24 hours
       SendFiles = False
     EndIf
     
@@ -345,7 +348,7 @@ BeginProg
           SendFileCntr += 1
           FileHandle = FileOpen(TableFileName(cntr2),"r",0)
           If DataDefinitionFlag(cntr2) Then
-            MaxSend = 4097
+            MaxSend = 4097 
             DataDefinitionFlag(cntr2) = False
           Else
             MaxSend = 1025
@@ -361,7 +364,7 @@ BeginProg
                  Call (IridiumTx)
                   CallTable SendStat
                   SendTotal += ReadLength
-                Wend
+                Wend 'KU: muss nach 2. EndIf stehen?
               EndIf
             EndIf
           FileClose(FileHandle)
@@ -372,10 +375,9 @@ BeginProg
       Next cntr2
     EndIf       
    
+  NextScan 'KU: programm starts from the beginning
     
-  NextScan
-    
-  SlowSequence
+  SlowSequence 'KU: slow, energy intensive measurements
   'Ground Measurements every 15 or 30 Minutes
   Scan(15,min,0,0)
     'Conunter to do CS655 measurement only every 30 Minutes unless RainHiRes is saved, then every 15 Min
