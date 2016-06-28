@@ -100,17 +100,13 @@ Public CS655cntr As Long
 'Declare Variables and Units
 Public BattV
 Public PTemp_C
-
-
 Units BattV=Volts
 Units PTemp_C=Deg C
-
-
 
 'Define Data Tables
 DataTable(Send3Hourly,True,-1)
   DataInterval(0,5,min,10)
-  TableFile ("USR:Send3Hourly",1,0,36,0,0,NewTableFile(1),TableFileName(1))
+  TableFile ("USR:Send3Hourly",1,0,2,0,0,NewTableFile(1),TableFileName(1))
   Average(1,BattV,FP2,0)
   Average (1,PTemp_C,FP2,0)
 EndTable
@@ -119,15 +115,12 @@ DataTable(SendDaily,True,-1)
   DataInterval(0,1440,min,10)
   TableFile ("USR:SendDaily",1,0,1,0,0,NewTableFile(2),TableFileName(2))
   Minimum(1,BattV,FP2,False,False)
- 
 EndTable
 
 DataTable(SaveFull,True,-1)
   DataInterval(0,30,min,10)
-
   Average(1,BattV,FP2,False)
   Average(1,PTemp_C,FP2,False)
-  
 EndTable
 
 DataTable(SendStat, True, -1)
@@ -168,8 +161,10 @@ Sub IridiumTx
       EndIf
 
   'Send Message to Modem (into MO Buffer)
-  SerialOut(ComRS232,Left(SetupString,SetupLength),"READY",1,100)
-  SerialOutBlock (ComRS232,ReadString(1,1,1),ReadLength + 2)
+  SerialOut(ComRS232,Left(SetupString,SetupLength),"READY",1,100)'Waitstring im anderen Prog "0" ev. keine Antwort "Ready"?
+  SerialOutBlock (ComRS232,ReadString(1,1,1),ReadLength + 2)'ohne spez AT Befehl in den Buffer? Im anderen Prog "ATS + BDWT" 
+  SerialOut (COMRS232,"a","",0,100)
+  
   'Send Message
   SerialOut(ComRS232,"AT+SBDI"+CHR(13),"", 1,10)
   'Check successful send
@@ -188,19 +183,17 @@ BeginProg
   DataDefinitionFlag() = True
   
   'Main Scan
-  Scan(1,min,1,0)
+  Scan(1,min,10,0)
     
     'Default Datalogger Battery Voltage measurement 'BattV'
     Battery(BattV)
     'Default Wiring Panel Temperature measurement 'PTemp_C'
     PanelTemp(PTemp_C,_50Hz)
 
-    
     'Call Data Tables and Store Data
     CallTable Send3Hourly
     CallTable SendDaily
     CallTable SaveFull
-    
     
     For DataTableCount=1 To NumberDataTables Step 1
        If NewTableFile(DataTableCount)=True Then
@@ -213,14 +206,14 @@ BeginProg
     'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
 
-    If TimeIntoInterval (160,180,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
-    If TimeIntoInterval (0,180,Min) Then 
-      PortSet (5,0)    ' Turn off modem at 14:50 every 24 hours
+    If TimeIntoInterval (43,60,Min) Then PortSet (4,1)    ' Turn modem on every hour    
+    If TimeIntoInterval (59,60,Min) Then 
+      PortSet (4,0)    ' Turn off modem at 14:50 every 24 hours
       SendFiles = False
     EndIf
     
     'Allow the modem 3 minutes for warm up before sending files
-    If TimeIntoInterval (163,180,min) Then 
+    If TimeIntoInterval (46,60,min) Then 
       SendFiles = True 
       SendTotal = 0
     EndIf
@@ -272,20 +265,17 @@ BeginProg
         Wend
         FileClose(FileHandle)
 
-        SendSbdMessage(cntr2) = False
-        If (SendSbdMessage(1) = False AND SendSbdMessage(2) = False) Then
-          SendFiles = False
-          PortSet (5,0)
-        EndIf
+        'SendSbdMessage(cntr2) = False
+       ' If (SendSbdMessage(1) = False AND SendSbdMessage(2) = False) Then
+        '  SendFiles = False
+        '  PortSet (4,0)
+        'EndIf
         
         ExitFor
       EndIf
     Next cntr2
     EndIf
-      
-   
     
   NextScan
     
-  
 EndProg
