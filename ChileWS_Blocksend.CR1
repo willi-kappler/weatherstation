@@ -65,7 +65,7 @@ Public NewTableFile(NumberDataTables) As Boolean
 Public SendSbdMessage(NumberDataTables) As Boolean
 'Require strings for the unique file names associated with the data table files
 Public TableFileName(NumberDataTables) As String * 40
-Public FileLen(NumberDataTables) As Long
+'Public FileLen(NumberDataTables) As Long ' KU: outcommented because not used (created warning)
 Public HeadLen(NumberDataTables) As Long
 
 'Message Sending Status Variables
@@ -77,10 +77,10 @@ Public SendTime As Long
 
 Public SendFiles As Boolean
 Public FileHandle As Long
-Public ReadLength, SetupLength,SendFileCntr As Long
-Public LineCntr As Long
+Public ReadLength, SetupLength ',SendFileCntr As Long ' KU: outcommented because not used (created warning)
+'Public LineCntr As Long ' KU: outcommented because not used (created warning)
 Const ReadMax = 1024
-Public SendTotal, MaxSend As Long
+'Public SendTotal, MaxSend As Long ' KU: outcommented because not used (created warning)
 Public ReadString As String * ReadMax +5
 Public SetupString As String * 64
  
@@ -94,8 +94,8 @@ Public DataDefinitionFlag(NumberDataTables) As Boolean
 
 Dim DataTableCount As Long
 Public HeadCntr, cntr2 As Long
-Public TsinceRain  As Long = 100
-Public CS655cntr As Long
+'Public TsinceRain  As Long = 100 ' KU: outcommented because not used (created warning)
+'Public CS655cntr As Long ' KU: outcommented because not used (created warning)
 
 'Declare Variables and Units
 Public BattV
