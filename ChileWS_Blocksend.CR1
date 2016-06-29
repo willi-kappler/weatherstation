@@ -55,7 +55,7 @@
 '    12V:  Red
 '    C5:  Yellow
 '
-StationName ("SantaGracia")
+StationName ("SantaGracia") 'adapt before uploading to CR1000 logger
 
 Const NumberDataTables=2
 'Variables for Iridium Configuration
@@ -72,7 +72,7 @@ Public HeadLen(NumberDataTables) As Long
 Public CIERres As String * 32
 Public SBDIres As String * 64
 Public CIERstat(2) As Long
-Public SBDIstat(5) As Long
+Public SBDIstat(6) As Long
 Public SendTime As Long
 
 Public SendFiles As Boolean
@@ -144,6 +144,7 @@ Sub IridiumTx
   
   'Create SetupString
   SetupLength = Sprintf(SetupString,"AT+SBDWB=%d%c",ReadLength,13)
+  'KU: %d= decimal (=Zahl); %c= character
 
   'Calculate Checksum
     If ReadLength > 0 Then
@@ -160,21 +161,46 @@ Sub IridiumTx
       MoveBytes (ReadString(1,1,ReadLength),1,TX_Checksum,2,2)
       EndIf
 
-  'Send Message to Modem (into MO Buffer)
+  'Send Message to Modem (into MO Buffer) 'KU: developer guide: 6.1.2, Tabelle 6-2: "binary transfer", step 2 "Binary transfer"
   SerialOut(ComRS232,Left(SetupString,SetupLength),"READY",1,100)'Waitstring im anderen Prog "0" ev. keine Antwort "Ready"?
-  SerialOutBlock (ComRS232,ReadString(1,1,1),ReadLength + 2)'ohne spez AT Befehl in den Buffer? Im anderen Prog "ATS + BDWT" 
+  SerialOutBlock (ComRS232,ReadString(1,1,1),ReadLength + 2)
   SerialOut (COMRS232,"a","",0,100)
+  'KU: question: without AT command in buffer??? Asci program: "ATS + BDWT" -here only above. Asci used twice?
   
   'Send Message
-  SerialOut(ComRS232,"AT+SBDI"+CHR(13),"", 1,10)
+  ' SBDIX means SBD Ring Alert functionality
+  SerialOut(ComRS232,"AT+SBDI"+CHR(13),"", 1,10) 'KU: SBDI -> initiates message transfer session between ISU and Iridium Gateway
   'Check successful send
   SerialIn(SBDIres,ComRS232,10000,13,64)
-  SplitStr (SBDIstat(),SBDIres,"",5,0))
+  SplitStr (SBDIstat(),SBDIres,"",6,0))'KU: Zugang SBDI? Im Test einsehbar? Terminal emulator? -> 6 Zahlen aus der developers guide Hilfe
   'Clear MO message buffer only needed when sending multiple messages in a row 
   SerialOut(ComRS232,"AT+SBDD0"+CHR(13),"0",1,100)
   SerialClose(ComRS232)
   SendTime = Timer(1,sec,1)
 EndSub
+
+'Ideas/Test KU:
+'The FA (field application->logger) will load a Mobile Originated message into the ISU (Iridium subscriber unit->logger oder modem?)
+'AT+SBDWB=351 -> 351 is ein literaturbeispiel. es ist die byte Laenge der message -> warte auf READY damit gesendet werden kann
+'            -> definiere die bytelaenge
+'define variable: TX_Checksum -> programm Matthias
+'AT+SBDWB=(TX_Checksum+2)
+binary transfer 
+'AT+SBDIX -> initiate SBD transfer -> soll auf keine Nachricht warten
+'AT+SBDIX
+'AT+SBDD0 -> The FA instructs the ISU to clear the message from the Mobile Originated buffer. -> soll auf 0 warten-> successfully
+'         -> braucht man eigentlich nicht, weil nach Senden gelscht wird...? nochmal lesen
+'The MO message buffers in the ISU will maintain messages As Long As the ISU Is powered on.
+'Once a message Is transferred from the FA To the MO buffer in the ISU,
+'it will remain there even after it Is successfully sent To the Iridium Gateway. 
+'If a MT message Is received at the ISU from the Iridium Gateway, it will remain in the MT buffer even after the FA reads it. 
+'The buffers in the ISU will be cleared only when either given an explicit command (+SBDD) 
+'OR when the ISU Is power cycled OR Is overwritten with new data. 
+'The MT buffer will be cleared when a SBD session Is initiated.
+'delivery attempts to unreachable servers: 12 h, after that will be marked and removed from delivery cue.-> wir wollen timeout nach 18 Uhr.
+
+
+
 
 'Main Program
 BeginProg
