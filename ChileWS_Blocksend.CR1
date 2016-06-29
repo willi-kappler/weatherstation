@@ -163,8 +163,8 @@ Sub IridiumTx
 
   'Send Message to Modem (into MO Buffer) 'KU: developer guide: 6.1.2, Tabelle 6-2: "binary transfer", step 2 "Binary transfer"
   SerialOut(ComRS232,Left(SetupString,SetupLength),"READY",1,100)'Waitstring im anderen Prog "0" ev. keine Antwort "Ready"?
-  SerialOutBlock (ComRS232,ReadString(1,1,1),ReadLength + 2)
-  SerialOut (COMRS232,"a","",0,100)
+  SerialOutBlock (ComRS232,ReadString,ReadLength + 2) 'WK: ReadString(1,1,1) is a single char, ReadString is the whole string.
+  'SerialOut (COMRS232,"a","",0,100)
   'KU: question: without AT command in buffer??? Asci program: "ATS + BDWT" -here only above. Asci used twice?
   
   'Send Message
@@ -185,7 +185,7 @@ EndSub
 '            -> definiere die bytelaenge
 'define variable: TX_Checksum -> programm Matthias
 'AT+SBDWB=(TX_Checksum+2)
-binary transfer 
+'KU: binary transfer? 
 'AT+SBDIX -> initiate SBD transfer -> soll auf keine Nachricht warten
 'AT+SBDIX
 'AT+SBDD0 -> The FA instructs the ISU to clear the message from the Mobile Originated buffer. -> soll auf 0 warten-> successfully
