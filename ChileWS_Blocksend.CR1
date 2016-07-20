@@ -225,64 +225,64 @@ DataTable(SendStat, True, -1)
 EndTable
 
 Sub IridiumTx2
-  Timer(1,sec,2)
+  Timer(1, sec, 2)
   SerialOpen(ComRS232, 19200, 0, 0, 2000)
-  SerialOut(ComRS232, "AT+CIER=1,0,1"+CHR(13), "", 1, 10)
+  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
   SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
-  SerialOut(ComRS232, "AT+SBDWB=5"+CHR(13), "", 1, 10)
+  SerialOut(ComRS232, "AT+SBDWB=5" + CHR(13), "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
   'Example from IRDM_ISU_ATCommandReference.pdf, page (110 / 96)
   'hello = 68 65 6c 6c 6f = 104 101 108 108 111
   'Checksum: 02 14 = 02 20
-  'SerialOutBlock (ComRS232, "" + CHR(104) + CHR(101) + CHR(108) + CHR(108) + CHR(111) + CHR(02) + CHR(20), 7)
+  'SerialOutBlock(ComRS232, "" + CHR(104) + CHR(101) + CHR(108) + CHR(108) + CHR(111) + CHR(02) + CHR(20), 7)
   'SerialOut(ComRS232, "" + CHR(104) + CHR(101) + CHR(108) + CHR(108) + CHR(111) + CHR(02) + CHR(20), "", 1, 10)
   SerialOut(ComRS232, "hello" + CHR(02) + CHR(20), "", 1, 10)
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
-  SerialOut(ComRS232, "AT+SBDI"+CHR(13), "",  1, 10)
+  SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
   SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
-  SerialOut(ComRS232, "AT+SBDD0"+CHR(13), "", 1, 10)
+  SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
   SerialIn(SerialResponse5, ComRS232, 6000, 13, 64)
   SerialClose(ComRS232)
 EndSub
 
 'Define Subroutines
 Sub IridiumTx
-  Timer(1,sec,2)
-  SerialOpen(ComRS232,19200,0,0,2000)
+  Timer(1, sec, 2)
+  SerialOpen(ComRS232, 19200, 0, 0, 2000)
   'Request Result of Signal Status
-  SerialOut(ComRS232,"AT+CIER=1,0,1"+CHR(13),"",1,10)
+  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
   'Get and process Signal Status
-  SerialIn(SerialResponse1,ComRS232,6000,13,64)
+  SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
 
   'Create SetupString
-  SetupLength = Sprintf(SetupString,"AT+SBDWB=%d%c",ReadLength,13)
+  SetupLength = Sprintf(SetupString, "AT+SBDWB=%d%c", ReadLength, 13)
 
   'Calculate Checksum
     TX_Checksum = 0
     If ReadLength > 0 Then
       'Calculate the Checksum
-      For icnt=1 To ReadLength Step 1
-        byteholder=0
-        MoveBytes (byteholder,3,ReadString(1,1,icnt),0,1)
+      For icnt = 1 To ReadLength Step 1
+        byteholder = 0
+        MoveBytes (byteholder, 3, ReadString(1, 1, icnt), 0, 1)
         'The checksum is the sum of all bytes
         TX_Checksum = TX_Checksum + byteholder
       Next icnt
 
       'Move the checksum to the end of the outgoing data array
-      MoveBytes (ReadString(1,1,ReadLength),1,TX_Checksum,2,2)
+      MoveBytes (ReadString(1, 1, ReadLength), 1, TX_Checksum, 2, 2)
       EndIf
 
   'Send Message to Modem (into MO Buffer)
-  SerialOut(ComRS232,Left(SetupString,SetupLength),"",1,10)
-  SerialIn(SerialResponse2,ComRS232,6000,13,64)
-  SerialOutBlock (ComRS232,ReadString,ReadLength + 2)
-  SerialIn(SerialResponse3,ComRS232,6000,13,64)
+  SerialOut(ComRS232, Left(SetupString, SetupLength), "", 1, 10)
+  SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
+  SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
+  SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
   'Send Message
-  SerialOut(ComRS232,"AT+SBDI"+CHR(13),"", 1,10)
-  SerialIn(SerialResponse4,ComRS232,6000,13,64)
+  SerialOut(ComRS232, "AT+SBDI" + CHR(13), "", 1, 10)
+  SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
   'Clear MO message buffer only needed when sending multiple messages in a row
-  SerialOut(ComRS232,"AT+SBDD0"+CHR(13),"",1,10)
-  SerialIn(SerialResponse5,ComRS232,6000,13,64)
+  SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
+  SerialIn(SerialResponse5, ComRS232, 6000, 13, 64)
   SerialClose(ComRS232)
 EndSub
 
