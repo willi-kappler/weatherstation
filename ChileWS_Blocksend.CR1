@@ -227,17 +227,20 @@ Sub IridiumTx2
   'Page 11: "9522B: 1960 Bytes"
   ReadLength = 1960
 
-  'Fill string with zero bytes
+  'Fill string with "one" bytes
   For icnt = 1 To ReadLength
-    ReadString(1, 1, icnt) = CHR(0)
+    ReadString(1, 1, icnt) = CHR(1)
   Next icnt
 
   StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c", ReadLength, 13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  'Checksum is easy: just zero'
-  SerialOutBlock(ComRS232, ReadString + CHR(0) + CHR(0), ReadLength + 2)
+  'Checksum for "one" bytes:
+  'Value: 1960 -> 07A8
+  '07 -> CHR(07)
+  'A8 -> CHR(168)
+  SerialOutBlock(ComRS232, ReadString + CHR(07) + CHR(168), ReadLength + 2)
 
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
