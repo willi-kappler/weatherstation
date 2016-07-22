@@ -1,15 +1,4 @@
-'+’W/O:  CCSG002220
-'Customer:  Universitaet Tuebingen
-'Date:  21st December 2015
-'Program author:  P.Goodall
-'Campbell Scientific Contact:  Kai Schoenfeld
-'
-'Program used to test your weather station.
-'Please note the following important information:
-'Use the test program as a starting point, you will need to adapt it to suit your own application.
-'
-'Please note : Unable to test Iridium modem set fully as no SIM card available
-'
+'+W/O:  CCSG002220
 '-Wiring For CR1000-
 '
 '  HC2S3 (panel switched power)
@@ -75,15 +64,17 @@ Public SerialResponse3 As String * 64
 Public SerialResponse4 As String * 64
 Public SerialResponse5 As String * 64
 
+Public StringBuffer As String * 64
+Public StringBufferLength As Long
+
 
 Public SendFiles As Boolean
 Public FileHandle As Long
-Public ReadLength, SetupLength, SendFileCntr As Long
+Public ReadLength, SendFileCntr As Long
 Public LineCntr As Long
-Const ReadMax = 1024
+Const ReadMax = 1962
 Public SendTotal, MaxSend As Long
-Public ReadString As String * ReadMax +5
-Public SetupString As String * 64
+Public ReadString As String * ReadMax
 
 Dim TX_Checksum As Long
 Dim byteholder As Long
@@ -222,6 +213,8 @@ DataTable(SendStat, True, -1)
   Sample(1, SerialResponse3, String)
   Sample(1, SerialResponse4, String)
   Sample(1, SerialResponse5, String)
+  Sample(1, StringBuffer, String)
+  Sample(1, StringBufferLength, Long)
 EndTable
 
 Sub IridiumTx2
@@ -229,14 +222,23 @@ Sub IridiumTx2
   SerialOpen(ComRS232, 19200, 0, 0, 2000)
   SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
   SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
-  SerialOut(ComRS232, "AT+SBDWB=5" + CHR(13), "", 1, 10)
+
+  'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
+  'Page 11: "9522B: 1960 Bytes"
+  ReadLength = 1960
+
+  'Fill string with zero bytes
+  For icnt = 1 To ReadLength
+    ReadString(1, 1, icnt) = CHR(0)
+  Next icnt
+
+  StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c", ReadLength, 13)
+  SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
-  'Example from IRDM_ISU_ATCommandReference.pdf, page (110 / 96)
-  'hello = 68 65 6c 6c 6f = 104 101 108 108 111
-  'Checksum: 02 14 = 02 20
-  'SerialOutBlock(ComRS232, "" + CHR(104) + CHR(101) + CHR(108) + CHR(108) + CHR(111) + CHR(02) + CHR(20), 7)
-  'SerialOut(ComRS232, "" + CHR(104) + CHR(101) + CHR(108) + CHR(108) + CHR(111) + CHR(02) + CHR(20), "", 1, 10)
-  SerialOut(ComRS232, "hello" + CHR(02) + CHR(20), "", 1, 10)
+
+  'Checksum is easy: just zero'
+  SerialOutBlock(ComRS232, ReadString + CHR(0) + CHR(0), ReadLength + 2)
+
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
   SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
@@ -254,8 +256,8 @@ Sub IridiumTx
   'Get and process Signal Status
   SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
 
-  'Create SetupString
-  SetupLength = Sprintf(SetupString, "AT+SBDWB=%d%c", ReadLength, 13)
+  'Create StringBuffer
+  StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c", ReadLength, 13)
 
   'Calculate Checksum
     TX_Checksum = 0
@@ -273,7 +275,7 @@ Sub IridiumTx
       EndIf
 
   'Send Message to Modem (into MO Buffer)
-  SerialOut(ComRS232, Left(SetupString, SetupLength), "", 1, 10)
+  SerialOut(ComRS232, Left(StringBuffer, StringBufferLength), "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
   SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
