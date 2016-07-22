@@ -51,7 +51,7 @@ Const NumberDataTables=2
 
 'Require a variable for when a new DataTable file for transmission is created
 Public NewTableFile(NumberDataTables) As Boolean
-Public SendSbdMessage(NumberDataTables) As Boolean
+
 'Require strings for the unique file names associated with the data table files
 Public TableFileName(NumberDataTables) As String * 40
 Public FileLen(NumberDataTables) As Long
@@ -72,20 +72,16 @@ Public SendFiles As Boolean
 Public FileHandle As Long
 Public ReadLength, SendFileCntr As Long
 Public LineCntr As Long
-Const ReadMax = 1962
+Const ReadMax = 1960
 Public SendTotal, MaxSend As Long
-Public ReadString As String * ReadMax
+Public ReadString As String * (ReadMax + 2)
 
 Dim TX_Checksum As Long
 Dim byteholder As Long
 Dim icnt As Long
 
-'Used to send complete data definition information
-'Normally sent once after the program starts
-Public DataDefinitionFlag(NumberDataTables) As Boolean
-
 Dim DataTableCount As Long
-Public HeadCntr, cntr2 As Long
+Public HeadCntr, tableIndex As Long
 Public TsinceRain  As Long = 100
 Public CS655cntr As Long
 
@@ -237,7 +233,7 @@ Sub IridiumTx2
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
   'Checksum for "one" bytes:
-  'Value: 1960 -> 07A8
+  'Value: 1960 dec -> 07A8 hex
   '07 -> CHR(07)
   'A8 -> CHR(168)
   SerialOutBlock(ComRS232, ReadString + CHR(07) + CHR(168), ReadLength + 2)
@@ -250,52 +246,10 @@ Sub IridiumTx2
   SerialClose(ComRS232)
 EndSub
 
-'Define Subroutines
-Sub IridiumTx
-  Timer(1, sec, 2)
-  SerialOpen(ComRS232, 19200, 0, 0, 2000)
-  'Request Result of Signal Status
-  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
-  'Get and process Signal Status
-  SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
-
-  'Create StringBuffer
-  StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c", ReadLength, 13)
-
-  'Calculate Checksum
-    TX_Checksum = 0
-    If ReadLength > 0 Then
-      'Calculate the Checksum
-      For icnt = 1 To ReadLength Step 1
-        byteholder = 0
-        MoveBytes (byteholder, 3, ReadString(1, 1, icnt), 0, 1)
-        'The checksum is the sum of all bytes
-        TX_Checksum = TX_Checksum + byteholder
-      Next icnt
-
-      'Move the checksum to the end of the outgoing data array
-      MoveBytes (ReadString(1, 1, ReadLength), 1, TX_Checksum, 2, 2)
-      EndIf
-
-  'Send Message to Modem (into MO Buffer)
-  SerialOut(ComRS232, Left(StringBuffer, StringBufferLength), "", 1, 10)
-  SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
-  SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
-  SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
-  'Send Message
-  SerialOut(ComRS232, "AT+SBDI" + CHR(13), "", 1, 10)
-  SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
-  'Clear MO message buffer only needed when sending multiple messages in a row
-  SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
-  SerialIn(SerialResponse5, ComRS232, 6000, 13, 64)
-  SerialClose(ComRS232)
-EndSub
-
 'Main Program
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
   SetStatus ("USRDriveSize",32768)
-  DataDefinitionFlag() = True
 
   'Main Scan
   Scan(1,min,1,0)
@@ -327,24 +281,6 @@ BeginProg
     EndIf
     'Set diagnostic variables as needed
     Move(SmplsF,8,0,1)
-    'Select Case WSDiag
-    '  Case=0
-    '    SmplsF=1
-    '  Case=1
-    '    Diag1F=1
-    '  Case=2
-    '    Diag2F=1
-    '  Case=4
-    '    Diag4F=1
-    '  Case=8
-    '    Diag8F=1
-    '  Case=9
-    '    Diag9F=1
-    '  Case=10
-    '    Diag10F=1
-    '  Else
-    '    NNDF=1
-    'EndSelect
 
     'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
     PulseCount(Rain_mm,1,1,2,0,0.2,0)
@@ -365,13 +301,6 @@ BeginProg
     CallTable SaveFull
     CallTable RainHiRes
 
-    For DataTableCount=1 To NumberDataTables Step 1
-       If NewTableFile(DataTableCount)=True Then
-          SendSbdMessage(DataTableCount)=True
-          NewTableFile(DataTableCount)=False
-       EndIf
-    Next DataTableCount
-
     'Activate Iridium Modems at 12:00 Daily for 15 minutes each time.
     'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
@@ -389,61 +318,20 @@ BeginProg
     EndIf
 
     If (SendFiles=True) Then
-      'If a new data output exists, call a subroutine to prepare the data and tansmit it.
-      For cntr2=1 To NumberDataTables Step 1
-      If SendSbdMessage(cntr2) Then
+      For tableIndex = 1 To NumberDataTables Step 1
+        FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
 
-        If (HeadLen(cntr2) < 0) Then
-          'Get File Size
-          'FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
-          'FileSizes(cntr2) = FileSize (FileHandle)
-          'FileClose(FileHandle)
-
-          'Binary File has 5 Header Lines
-          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
-          HeadLen(cntr2) = 0
-          For HeadCntr=1 To 5 Step 1
-            ReadLength =  FileReadLine(FileHandle,ReadString,ReadMax)
-            HeadLen(cntr2) += ReadLength
-          Next HeadCntr
-          HeadLen(cntr2) += 1
-          FileClose(FileHandle)
-         'CallTable ReadStat
-        EndIf
-
-        If DataDefinitionFlag(cntr2) Then
-          'Write only Header
-          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
-          'Might need this instead if sent header is too long
-          'ReadLength = FileRead (FileHandle,ReadString,HeadLen(cntr2)-1)
-          ReadLength = FileRead (FileHandle,ReadString,HeadLen(cntr2))
-          FileClose(FileHandle)
-          Call (IridiumTx2)
-          CallTable SendStat
-
-          'Only Send Header on Startup
-          DataDefinitionFlag(cntr2) = False
-          ExitFor
-        EndIf
-
-        FileHandle = FileOpen(TableFileName(cntr2),"rb",HeadLen(cntr2))
         ReadLength = ReadMax
-        While ReadLength >= ReadMax
-          ReadLength = FileRead(FileHandle,ReadString,ReadMax)
-          Call (IridiumTx2)
-          CallTable SendStat
+        While ReadLength > 0
+          ReadLength = FileRead(FileHandle, ReadString, ReadMax)
         Wend
+
         FileClose(FileHandle)
-
-        SendSbdMessage(cntr2) = False
-        If (SendSbdMessage(1) = False AND SendSbdMessage(2) = False) Then
-          SendFiles = False
-          PortSet (5,0)
-        EndIf
-
-        ExitFor
-      EndIf
-    Next cntr2
+        Call(IridiumTx2)
+        CallTable SendStat
+      Next tableIndex
+      SendFiles = False
+      PortSet (5,0)
     EndIf
 
 
