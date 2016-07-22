@@ -213,6 +213,9 @@ DataTable(SendStat, True, -1)
   Sample(1, StringBufferLength, Long)
 EndTable
 
+
+'String contatenation: Datalogger_cr1000.pdf, page: 282
+
 Sub IridiumTx2
   Timer(1, sec, 2)
   SerialOpen(ComRS232, 19200, 0, 0, 2000)
@@ -228,7 +231,7 @@ Sub IridiumTx2
     ReadString(1, 1, icnt) = CHR(1)
   Next icnt
 
-  StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c", ReadLength, 13)
+  StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c%c", ReadLength, 13, 0)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
@@ -237,6 +240,8 @@ Sub IridiumTx2
   '07 -> CHR(07)
   'A8 -> CHR(168)
   SerialOutBlock(ComRS232, ReadString + CHR(07) + CHR(168), ReadLength + 2)
+  'Alternatively:
+  'SerialOutBlock(ComRS232, ReadString + CHR(&H07) + CHR(&HA8), ReadLength + 2)
 
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
@@ -249,7 +254,7 @@ EndSub
 'Main Program
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
-  SetStatus ("USRDriveSize",32768)
+  SetStatus ("USRDriveSize", 32768)
 
   'Main Scan
   Scan(1,min,1,0)
@@ -305,33 +310,32 @@ BeginProg
     'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
 
-    If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
-    If TimeIntoInterval (890,1440,Min) Then
-      PortSet (5,0)    ' Turn off modem at 14:50 every 24 hours
+    If TimeIntoInterval (870, 1440, Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
+    If TimeIntoInterval (890, 1440, Min) Then
+      PortSet (5, 0)    ' Turn off modem at 14:50 every 24 hours
       SendFiles = False
     EndIf
 
     'Allow the modem 3 minutes for warm up before sending files
-    If TimeIntoInterval (873,1440,min) Then
+    If TimeIntoInterval (873, 1440, min) Then
       SendFiles = True
       SendTotal = 0
     EndIf
 
-    If (SendFiles=True) Then
+    If SendFiles Then
       For tableIndex = 1 To NumberDataTables Step 1
         FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
 
-        ReadLength = ReadMax
-        While ReadLength > 0
+        Do
           ReadLength = FileRead(FileHandle, ReadString, ReadMax)
-        Wend
+        Loop While ReadLength > 0
 
         FileClose(FileHandle)
         Call(IridiumTx2)
         CallTable SendStat
       Next tableIndex
       SendFiles = False
-      PortSet (5,0)
+      PortSet (5, 0)
     EndIf
 
 
