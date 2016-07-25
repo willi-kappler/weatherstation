@@ -65,7 +65,6 @@ Public SerialResponse4 As String * 64
 Public SerialResponse5 As String * 64
 
 Public StringBuffer As String * 64
-Public StringBufferLength As Long
 
 
 Public SendFiles As Boolean
@@ -210,7 +209,6 @@ DataTable(SendStat, True, -1)
   Sample(1, SerialResponse4, String)
   Sample(1, SerialResponse5, String)
   Sample(1, StringBuffer, String)
-  Sample(1, StringBufferLength, Long)
 EndTable
 
 
@@ -231,7 +229,7 @@ Sub IridiumTx2
     ReadString(1, 1, icnt) = CHR(1)
   Next icnt
 
-  StringBufferLength = Sprintf(StringBuffer, "AT+SBDWB=%d%c%c", ReadLength, 13, 0)
+  StringBuffer = "AT+SBDWB=" + ReadLength + CHR(13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
