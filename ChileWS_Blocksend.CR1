@@ -63,8 +63,9 @@ Public SerialResponse2 As String * 64
 Public SerialResponse3 As String * 64
 Public SerialResponse4 As String * 64
 Public SerialResponse5 As String * 64
-
 Public StringBuffer As String * 64
+Public CSB1 As String * 1
+Public CSB2 As String * 1
 
 
 Public SendFiles As Boolean
