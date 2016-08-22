@@ -233,12 +233,6 @@ Sub IridiumTx2
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  TX_Checksum = CheckSum(ReadString, 23, ReadLength)
-  CSB1 = TX_Checksum AND &B11111111
-  CSB2 = (TX_Checksum >> 8)  AND &B11111111
-
-  SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength + 2)
-
   'Checksum for "one" bytes:
   'Value: 1960 dec -> 07A8 hex
   '07 -> CHR(07)
@@ -247,7 +241,19 @@ Sub IridiumTx2
   'Alternatively:
   'SerialOutBlock(ComRS232, ReadString + CHR(&H07) + CHR(&HA8), ReadLength + 2)
 
+  TX_Checksum = CheckSum(ReadString, 23, ReadLength)
+  CSB1 = TX_Checksum AND &B11111111
+  CSB2 = (TX_Checksum >> 8)  AND &B11111111
 
+  SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength + 2)
+
+  'SerialResponse3 should be 0 if everything went well.
+  'Otherwise see error codes in the manual:
+  'IRDM_ISU_ATCommandReference.pdf, page 95 / 110
+  '0: OK
+  '1: Timeout
+  '2: Checksum error
+  '3: Message size not correct
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
   SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
