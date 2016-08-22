@@ -233,13 +233,20 @@ Sub IridiumTx2
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
+  TX_Checksum = CheckSum(ReadString, 23, ReadLength)
+  CSB1 = TX_Checksum AND &B11111111
+  CSB2 = (TX_Checksum >> 8)  AND &B11111111
+
+  SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength + 2)
+
   'Checksum for "one" bytes:
   'Value: 1960 dec -> 07A8 hex
   '07 -> CHR(07)
   'A8 -> CHR(168)
-  SerialOutBlock(ComRS232, ReadString + CHR(07) + CHR(168), ReadLength + 2)
+  'SerialOutBlock(ComRS232, ReadString + CHR(07) + CHR(168), ReadLength + 2)
   'Alternatively:
   'SerialOutBlock(ComRS232, ReadString + CHR(&H07) + CHR(&HA8), ReadLength + 2)
+
 
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
@@ -308,7 +315,10 @@ BeginProg
     'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
 
-    If TimeIntoInterval (870, 1440, Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
+    If TimeIntoInterval (870, 1440, Min) Then
+      PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
+    EndIf
+
     If TimeIntoInterval (890, 1440, Min) Then
       PortSet (5, 0)    ' Turn off modem at 14:50 every 24 hours
       SendFiles = False
@@ -329,14 +339,13 @@ BeginProg
         Loop While ReadLength > 0
 
         FileClose(FileHandle)
+
         Call(IridiumTx2)
         CallTable SendStat
       Next tableIndex
       SendFiles = False
       PortSet (5, 0)
     EndIf
-
-
 
   NextScan
 
