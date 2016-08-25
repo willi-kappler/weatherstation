@@ -223,7 +223,7 @@ Sub IridiumTx2
 
   'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
   'Page 11: "9522B: 1960 Bytes"
-  ReadLength = 1958
+  ReadLength = ReadMax
 
   'Fill string with "one" bytes
   For icnt = 1 To ReadLength
