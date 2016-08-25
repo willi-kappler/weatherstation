@@ -246,6 +246,21 @@ Sub IridiumTx2
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
 
+  SerialResponse2 = SerialResponse2 + ", chk1: " + TX_Checksum
+
+  'Calculate Checksum
+  If ReadLength > 0 Then
+    'Calculate the Checksum
+    TX_Checksum = 0
+    For icnt = 1 To ReadLength Step 1
+      byteholder = 0
+      MoveBytes (byteholder, 3, ReadString(1, 1, icnt), 0, 1)
+      'The checksum is the sum of all bytes
+      TX_Checksum = TX_Checksum + byteholder
+    Next icnt
+    SerialResponse2 = SerialResponse2 + ", chk2: " + TX_Checksum
+  EndIf
+
   SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength + 2)
 
   'SerialResponse3 should be 0 if everything went well.
