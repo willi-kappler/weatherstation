@@ -223,14 +223,14 @@ Sub IridiumTx2
 
   'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
   'Page 11: "9522B: 1960 Bytes"
-  ReadLength = 1960
+  ReadLength = 1958
 
   'Fill string with "one" bytes
-  For icnt = 1 To ReadLength - 2
+  For icnt = 1 To ReadLength
     ReadString(1, 1, icnt) = CHR(1)
   Next icnt
 
-  StringBuffer = "AT+SBDWB=" + ReadLength + CHR(13)
+  StringBuffer = "AT+SBDWB=" + (ReadLength + 2) + CHR(13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
@@ -242,11 +242,11 @@ Sub IridiumTx2
   'Alternatively:
   'SerialOutBlock(ComRS232, ReadString + CHR(&H07) + CHR(&HA8), ReadLength + 2)
 
-  TX_Checksum = CheckSum(ReadString, 23, ReadLength - 2)
+  TX_Checksum = CheckSum(ReadString, 23, ReadLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
 
-  SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength)
+  SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength + 2)
 
   'SerialResponse3 should be 0 if everything went well.
   'Otherwise see error codes in the manual:
