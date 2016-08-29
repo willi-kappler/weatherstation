@@ -217,10 +217,6 @@ EndTable
 
 Sub IridiumTx2
   Timer(1, sec, 2)
-  SerialOpen(ComRS232, 19200, 0, 0, 2000)
-  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
-  SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
-
   'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
   'Page 11: "9522B: 1960 Bytes"
   ReadLength = ReadMax
@@ -241,6 +237,10 @@ Sub IridiumTx2
   TX_Checksum = CheckSum(ReadString, 23, ReadLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
+
+  SerialOpen(ComRS232, 19200, 0, 0, 2000)
+  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
+  SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
 
   StringBuffer = "AT+SBDWB=" + (ReadLength + 2) + CHR(13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
