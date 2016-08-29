@@ -230,10 +230,6 @@ Sub IridiumTx2
     ReadString(1, 1, icnt) = CHR(1)
   Next icnt
 
-  StringBuffer = "AT+SBDWB=" + (ReadLength + 2) + CHR(13)
-  SerialOut(ComRS232, StringBuffer, "", 1, 10)
-  SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
-
   'Checksum for "one" bytes:
   'Value: 1960 dec -> 07A8 hex
   '07 -> CHR(07)
@@ -246,20 +242,11 @@ Sub IridiumTx2
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
 
-  SerialResponse2 = SerialResponse2 + ", chk1: " + TX_Checksum
+  StringBuffer = "AT+SBDWB=" + (ReadLength + 2) + CHR(13)
+  SerialOut(ComRS232, StringBuffer, "", 1, 10)
+  SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  'Calculate Checksum
-  If ReadLength > 0 Then
-    'Calculate the Checksum
-    TX_Checksum = 0
-    For icnt = 1 To ReadLength Step 1
-      byteholder = 0
-      MoveBytes (byteholder, 3, ReadString(1, 1, icnt), 0, 1)
-      'The checksum is the sum of all bytes
-      TX_Checksum = TX_Checksum + byteholder
-    Next icnt
-    SerialResponse2 = SerialResponse2 + ", chk2: " + TX_Checksum
-  EndIf
+  SerialResponse2 = SerialResponse2 + ", chk1: " + TX_Checksum
 
   SerialOutBlock(ComRS232, ReadString + CSB2 + CSB1, ReadLength + 2)
 
