@@ -261,7 +261,7 @@ Sub IridiumTx2
     SerialResponse2 = SerialResponse2 + ", chk2: " + TX_Checksum
   EndIf
 
-  SerialOutBlock(ComRS232, ReadString + CSB1 + CSB2, ReadLength + 2)
+  SerialOutBlock(ComRS232, ReadString + CSB2 + CSB1, ReadLength + 2)
 
   'SerialResponse3 should be 0 if everything went well.
   'Otherwise see error codes in the manual:
