@@ -101,23 +101,23 @@ Public Rain_mm
 'Public R_I_C
 Public BP_mbar
 
-Alias CS655(1)=VWC
-Alias CS655(2)=EC
-Alias CS655(3)=GrTemp
-Alias CS655(4)=P
-Alias CS655(5)=PA
-Alias CS655(6)=VR
-Alias WSData(1)=WindDir
-Alias WSData(2)=WS_ms
-Alias WSData(3)=WSDiag
-Alias N(1)=SmplsF
-Alias N(2)=Diag1F
-Alias N(3)=Diag2F
-Alias N(4)=Diag4F
-Alias N(5)=Diag8F
-Alias N(6)=Diag9F
-Alias N(7)=Diag10F
-Alias N(8)=NNDF
+Alias CS655(1) = VWC
+Alias CS655(2) = EC
+Alias CS655(3) = GrTemp
+Alias CS655(4) = P
+Alias CS655(5) = PA
+Alias CS655(6) = VR
+Alias WSData(1) = WindDir
+Alias WSData(2) = WS_ms
+Alias WSData(3) = WSDiag
+Alias N(1) = SmplsF
+Alias N(2) = Diag1F
+Alias N(3) = Diag2F
+Alias N(4) = Diag4F
+Alias N(5) = Diag8F
+Alias N(6) = Diag9F
+Alias N(7) = Diag10F
+Alias N(8) = NNDF
 
 Units BattV=Volts
 Units PTemp_C=Deg C
@@ -140,65 +140,65 @@ Units WSDiag=unitless
 
 
 'Define Data Tables
-DataTable(SendHourly,True,-1)
-  DataInterval(0,60,min,10)
-  TableFile ("USR:SendHourly",1,0,24,0,0,NewTableFile(1),TableFileName(1))
-  Average(1,AirTC,FP2,False)
-  Sample(1,RH,FP2)
-  Average(1,SlrW,FP2,False)
-  Average(1,VWC,FP2,False)
-  Average(1,GrTemp,FP2,False)
-  Average(1,WS_ms,FP2,False)
-  Maximum(1,WS_ms,FP2,False,False)
+DataTable(SendHourly, True, -1)
+  DataInterval(0, 60, min, 10)
+  TableFile ("USR:SendHourly", 1, 0, 24, 0, 0, NewTableFile(1), TableFileName(1))
+  Average(1, AirTC, FP2, False)
+  Sample(1, RH, FP2)
+  Average(1, SlrW, FP2, False)
+  Average(1, VWC, FP2, False)
+  Average(1, GrTemp, FP2, False)
+  Average(1, WS_ms, FP2, False)
+  Maximum(1, WS_ms, FP2, False, False)
   FieldNames("WS_ms_max")
-  Average(1,WindDir,FP2,False)
-  Totalize(1,Rain_mm,FP2,False)
-  Average(1,BP_mbar,FP2,False)
+  Average(1, WindDir, FP2, False)
+  Totalize(1, Rain_mm, FP2, False)
+  Average(1, BP_mbar, FP2, False)
 EndTable
 
-DataTable(SendDaily,True,-1)
-  DataInterval(0,1440,min,10)
-  TableFile ("USR:SendDaily",1,0,1,0,0,NewTableFile(2),TableFileName(2))
-  Minimum(1,BattV,FP2,False,False)
-  Sample(1,WSDiag,FP2)
+DataTable(SendDaily, True, -1)
+  DataInterval(0, 1440, min, 10)
+  TableFile ("USR:SendDaily", 1, 0, 1, 0, 0, NewTableFile(2), TableFileName(2))
+  Minimum(1, BattV, FP2, False, False)
+  Sample(1, WSDiag, FP2)
 EndTable
 
-DataTable(SaveFull,True,-1)
-  DataInterval(0,30,min,10)
-  CardOut(0,536870912)
-  Average(1,BattV,FP2,False)
-  Average(1,PTemp_C,FP2,False)
-  Average(1,AirTC,FP2,False)
-  Sample(1,RH,FP2)
-  Average(1,PVap,FP2,False)
-  Average(1,SlrW,FP2,False)
-  Totalize(1,SlrMJ,IEEE4,False)
-  Average(1,VWC,FP2,False)
-  Average(1,GrTemp,FP2,False
-  Average(1,EC,FP2,False)
-  Average(1,P,FP2,False)
-  Average(1,PA,FP2,False)
-  Average(1,VR,FP2,False)
-  Average(1,WS_ms,FP2,False)
-  Maximum(1,WS_ms,FP2,False,False)
+DataTable(SaveFull, True, -1)
+  DataInterval(0, 30, min, 10)
+  CardOut(0, 536870912)
+  Average(1, BattV, FP2, False)
+  Average(1, PTemp_C, FP2, False)
+  Average(1, AirTC, FP2, False)
+  Sample(1, RH, FP2)
+  Average(1, PVap, FP2, False)
+  Average(1, SlrW, FP2, False)
+  Totalize(1, SlrMJ, IEEE4, False)
+  Average(1, VWC, FP2, False)
+  Average(1, GrTemp, FP2, False)
+  Average(1, EC, FP2, False)
+  Average(1, P, FP2, False)
+  Average(1, PA, FP2, False)
+  Average(1, VR, FP2, False)
+  Average(1, WS_ms, FP2, False)
+  Maximum(1, WS_ms, FP2, False, False)
   FieldNames("WS_ms_max")
-  Minimum(1,WS_ms,FP2,False,False)
+  Minimum(1, WS_ms, FP2, False, False)
   FieldNames("WS_ms_min"
-  Average(1,WindDir,FP2,False)
-  WindVector(1,WS_ms,WindDir,FP2,False,0,0,1)
+  Average(1, WindDir, FP2, False)
+  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 1)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
-  Totalize(1,Rain_mm,FP2,False)
-  Average(1,BP_mbar,FP2,False)
+  Totalize(1, Rain_mm, FP2, False)
+  Average(1, BP_mbar, FP2, False)
 EndTable
 
 
-DataTable(RainHiRes,True,-1)
-  DataInterval(0,5,min,10)
+DataTable(RainHiRes, True, -1)
+  DataInterval(0, 5, min, 10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
-  CardOut(0,536870912)
-  Totalize(1,Rain_mm,FP2,False)
-  Sample(1,VWC,FP2
-  Sample(1,GrTemp,FP2)
+  CardOut(0, 536870912)
+  Totalize(1, Rain_mm, FP2, False)
+  Sample(1, VWC, FP2
+  Sample(1, GrTemp, FP2)
 EndTable
 
 DataTable(SendStat, True, -1)
@@ -271,7 +271,7 @@ BeginProg
   SetStatus ("USRDriveSize", 32768)
 
   'Main Scan
-  Scan(1,min,1,0)
+  Scan(1, min, 1, 0)
 
     'Default Datalogger Battery Voltage measurement 'BattV'
     Battery(BattV)
@@ -279,30 +279,30 @@ BeginProg
     PanelTemp(PTemp_C,_50Hz)
 
     'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
-    PortSet (9,1)
-    VoltSe(AirTC,1,mV2500,1,0,0,_50Hz,0.1,-40)
-    VoltSe(RH,1,mV2500,2,0,0,_50Hz,0.1,0)
+    PortSet (9, 1)
+    VoltSe(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
+    VoltSe(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
     'Trim RH value
-    If RH>100 AND RH<103 Then RH=100
-    VaporPressure(PVap,AirTC,RH)
+    If RH > 100 AND RH < 103 Then RH = 100
+    VaporPressure(PVap, AirTC, RH)
 
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
-    VoltSe(SlrW,1,mV250,3,1,0,_50Hz,1.0,0)
-    If SlrW<0 Then SlrW=0
-    SlrMJ=SlrW*(0.000005*60)  'Convert mV to MJ/m² with 60s measurement interval
-    SlrW=SlrW*5.0  'Convert mV to W/m²
+    VoltSe(SlrW, 1, mV250, 3, 1, 0, _50Hz, 1.0, 0)
+    If SlrW < 0 Then SlrW = 0
+    SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
+    SlrW = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'Get data from WindSonic4
-    SDI12Recorder(WindDir,3,"0","R0!",1,0)
-    If WindDir=NaN Then
-      Move(WS_ms,2,WindDir,1)
+    SDI12Recorder(WindDir, 3, "0", "R0!", 1, 0)
+    If WindDir = NaN Then
+      Move(WS_ms, 2, WindDir, 1)
     EndIf
     'Set diagnostic variables as needed
-    Move(SmplsF,8,0,1)
+    Move(SmplsF, 8, 0, 1)
 
     'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
-    PulseCount(Rain_mm,1,1,2,0,0.2,0)
+    PulseCount(Rain_mm, 1, 1, 2, 0, 0.2, 0)
     If (Rain_mm > 0.19) Then
       TsinceRain = 0
     Else
@@ -310,9 +310,9 @@ BeginProg
     EndIf
 
     'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
-    PortSet(2,1)
-    VoltSe(BP_mbar,1,mV2500,4,1,0,_50Hz,0.2,600)
-    BP_mbar=BP_mbar*1
+    PortSet(2, 1)
+    VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
+    BP_mbar = BP_mbar * 1
 
     'Call Data Tables and Store Data
     CallTable SendHourly
@@ -360,7 +360,7 @@ BeginProg
 
   SlowSequence
   'Ground Measurements every 15 or 30 Minutes
-  Scan(15,min,0,0)
+  Scan(15, min, 0, 0)
     'Conunter to do CS655 measurement only every 30 Minutes unless RainHiRes is saved, then every 15 Min
     If (TsinceRain <= 30) Then
       CS655cntr = 0
@@ -370,7 +370,7 @@ BeginProg
 
     If (CS655cntr < 1) Then
       'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
-      SDI12Recorder(CS655(),1,"0","M3!",1,0)
+      SDI12Recorder(CS655(), 1, "0", "M3!", 1, 0)
       'Resest Counter
       CS655cntr = 2
     EndIf
