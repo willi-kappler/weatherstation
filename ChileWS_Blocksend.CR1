@@ -64,15 +64,15 @@ Public SerialResponse3 As String * 64
 Public SerialResponse4 As String * 64
 Public SerialResponse5 As String * 64
 Public StringBuffer As String * 64
-Public CSB1 As String * 1
-Public CSB2 As String * 1
+Public CSB1 As Long
+Public CSB2 As Long
 
 
 Public SendFiles As Boolean
 Public FileHandle As Long
 Public ReadLength, SendFileCntr As Long
 Public LineCntr As Long
-Const ReadMax = 1958
+Const ReadMax = 1960
 Public SendTotal, MaxSend As Long
 Public ReadString As String * ReadMax
 
@@ -210,6 +210,7 @@ DataTable(SendStat, True, -1)
   Sample(1, SerialResponse4, String)
   Sample(1, SerialResponse5, String)
   Sample(1, StringBuffer, String)
+  Sample(1, SendTotal, Long)
 EndTable
 
 
@@ -219,7 +220,7 @@ Sub IridiumTx2
   Timer(1, sec, 2)
   'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
   'Page 11: "9522B: 1960 Bytes"
-  ReadLength = ReadMax
+  ReadLength = ReadMax - 2
 
   'Fill string with "one" bytes
   For icnt = 1 To ReadLength
@@ -237,6 +238,8 @@ Sub IridiumTx2
   TX_Checksum = CheckSum(ReadString, 23, ReadLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
+  ReadString(1, 1, ReadLength + 1) = CHR(CSB2)
+  ReadString(1, 1, ReadLength + 2) = CHR(CSB1)
 
   SerialOpen(ComRS232, 19200, 0, 0, 2000)
   SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
@@ -246,9 +249,10 @@ Sub IridiumTx2
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  SerialResponse2 = SerialResponse2 + ", chk1: " + TX_Checksum
+  SerialResponse2 = SerialResponse2 + ", chk1: " + TX_Checksum + ", CSB1: " + CSB1 + ", CSB2: " + CSB2
+  SerialResponse2 = SerialResponse2 + ", ASCII: " + ASCII(ReadString(1, 1, ReadLength + 1)) + ", " + ASCII(ReadString(1, 1, ReadLength + 2))
 
-  SerialOutBlock(ComRS232, ReadString + CSB2 + CSB1, ReadLength + 2)
+  SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
 
   'SerialResponse3 should be 0 if everything went well.
   'Otherwise see error codes in the manual:
@@ -344,7 +348,8 @@ BeginProg
         FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
 
         Do
-          ReadLength = FileRead(FileHandle, ReadString, ReadMax)
+          ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
+          SendTotal = SendTotal + 1
         Loop While ReadLength > 0
 
         FileClose(FileHandle)
