@@ -64,21 +64,20 @@ Public SerialResponse3 As String * 64
 Public SerialResponse4 As String * 64
 Public SerialResponse5 As String * 64
 Public StringBuffer As String * 64
-Public CSB1 As Long
-Public CSB2 As Long
+Public CSB1, CSB2 As Long
 
 
 Public SendFiles As Boolean
 Public FileHandle As Long
 Public ReadLength, SendFileCntr As Long
 Public LineCntr As Long
+'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
+'Page 11: "9522B: 1960 Bytes"
 Const ReadMax = 1960
-Public SendTotal, MaxSend As Long
+Public SendTotal, MaxSend, ErrorCode As Long
 Public ReadString As String * ReadMax
 
-Dim TX_Checksum As Long
-Dim byteholder As Long
-Dim icnt As Long
+Dim TX_Checksum, RetriesOnError As Long
 
 Dim DataTableCount As Long
 Public HeadCntr, tableIndex As Long
@@ -218,40 +217,26 @@ EndTable
 
 Sub IridiumTx2
   Timer(1, sec, 2)
-  'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
-  'Page 11: "9522B: 1960 Bytes"
-  ReadLength = ReadMax - 2
 
-  'Fill string with "one" bytes
-  For icnt = 1 To ReadLength
-    ReadString(1, 1, icnt) = CHR(1)
-  Next icnt
-
-  'Checksum for "one" bytes:
-  'Value: 1960 dec -> 07A8 hex
-  '07 -> CHR(07)
-  'A8 -> CHR(168)
-  'SerialOutBlock(ComRS232, ReadString + CHR(07) + CHR(168), ReadLength + 2)
-  'Alternatively:
-  'SerialOutBlock(ComRS232, ReadString + CHR(&H07) + CHR(&HA8), ReadLength + 2)
-
+  'Calculate checksum:
   TX_Checksum = CheckSum(ReadString, 23, ReadLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
+  'And append it to the data that is going to be send:
   ReadString(1, 1, ReadLength + 1) = CHR(CSB2)
   ReadString(1, 1, ReadLength + 2) = CHR(CSB1)
 
+  'Initialize:
   SerialOpen(ComRS232, 19200, 0, 0, 2000)
   SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
   SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
 
+  'Prepare send:
   StringBuffer = "AT+SBDWB=" + (ReadLength + 2) + CHR(13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  SerialResponse2 = SerialResponse2 + ", chk1: " + TX_Checksum + ", CSB1: " + CSB1 + ", CSB2: " + CSB2
-  SerialResponse2 = SerialResponse2 + ", ASCII: " + ASCII(ReadString(1, 1, ReadLength + 1)) + ", " + ASCII(ReadString(1, 1, ReadLength + 2))
-
+  'Send data including checksum:
   SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
 
   'SerialResponse3 should be 0 if everything went well.
@@ -262,6 +247,21 @@ Sub IridiumTx2
   '2: Checksum error
   '3: Message size not correct
   SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
+
+  'Convert String respone to Integer
+  ErrorCode = LTrim(SerialResponse3)
+
+  If ErrorCode == 0 Then
+    'No error, so do not try to resend
+    RetriesOnError = 0
+  Else
+    'An error occured.
+    'Try to send the error code to the user as ASCII Text
+    SerialOut(ComRS232,"AT+SBDWT=" + SerialResponse3 + CHR(13), "0", 1, 500)
+    'Decrease number of retries, so that we do not try to send the message forever
+    RetriesOnError = RetriesOnError - 1
+  EndIf
+
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
   SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
   SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
@@ -324,20 +324,24 @@ BeginProg
     CallTable SaveFull
     CallTable RainHiRes
 
-    'Activate Iridium Modems at 12:00 Daily for 15 minutes each time.
-    'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
-    ' *** Use intervals that are applicable for your application ***
-
+    'Turn on modem at 14:30 every 24 hours
+    '1440 = 24 hours a day * 60 minutes per hour
+    '870 = (14 * 60) + 30
     If TimeIntoInterval (870, 1440, Min) Then
-      PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
+      PortSet (5,1)
     EndIf
 
+    'Turn off modem at 14:50 every 24 hours
+    '1440 = 24 * 60
+    '870 = (14 * 60) + 50
     If TimeIntoInterval (890, 1440, Min) Then
-      PortSet (5, 0)    ' Turn off modem at 14:50 every 24 hours
+      PortSet (5, 0)
       SendFiles = False
     EndIf
 
     'Allow the modem 3 minutes for warm up before sending files
+    '1440 = 24 * 60
+    '870 = (14 * 60) + 33
     If TimeIntoInterval (873, 1440, min) Then
       SendFiles = True
       SendTotal = 0
@@ -350,11 +354,14 @@ BeginProg
         Do
           ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
           SendTotal = SendTotal + 1
+          RetriesOnError = 3
+          Do
+            Call(IridiumTx2)
+          Loop While RetriesOnError > 0
         Loop While ReadLength > 0
 
         FileClose(FileHandle)
 
-        Call(IridiumTx2)
         CallTable SendStat
       Next tableIndex
       SendFiles = False
