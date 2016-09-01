@@ -49,56 +49,51 @@ StationName ("WanneTUE")
 Const NumberDataTables=2
 'Variables for Iridium Configuration
 
-'Require a variable for when a new DataTable file for transmission is created
-Public NewTableFile(NumberDataTables) As Boolean
-
-'Require strings for the unique file names associated with the data table files
-Public TableFileName(NumberDataTables) As String * 40
-Public FileLen(NumberDataTables) As Long
-Public HeadLen(NumberDataTables) As Long
-
-'Message Sending Status Variables
-Public SerialResponse1 As String * 64
-Public SerialResponse2 As String * 64
-Public SerialResponse3 As String * 64
-Public SerialResponse4 As String * 64
-Public SerialResponse5 As String * 64
-Public StringBuffer As String * 64
-Public CSB1, CSB2 As Long
-
-
-Public SendFiles As Boolean
-Public FileHandle As Long
-Public ReadLength, SendFileCntr As Long
-Public LineCntr As Long
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
 Const ReadMax = 1960
-Public SendTotal, MaxSend, ErrorCode As Long
-Public ReadString As String * ReadMax
 
-Dim TX_Checksum, RetriesOnError As Long
+'Require a variable for when a new DataTable file for transmission is created
+Dim NewTableFile(NumberDataTables) As Boolean
 
-Dim DataTableCount As Long
-Public HeadCntr, tableIndex As Long
-Public TsinceRain  As Long = 100
-Public CS655cntr As Long
+'Require strings for the unique file names associated with the data table files
+Dim TableFileName(NumberDataTables) As String * 40
+Dim FileLen(NumberDataTables) As Long
+Dim HeadLen(NumberDataTables) As Long
+
+'Message Sending Status Variables
+Dim SerialResponse1 As String * 64
+Dim SerialResponse2 As String * 64
+Dim SerialResponse3 As String * 64
+Dim SerialResponse4 As String * 64
+Dim SerialResponse5 As String * 64
+
+Dim SendFiles As Boolean
+Dim FileHandle, ReadLength As Long
+Dim SendTotal, ErrorCode As Long
+Dim ReadString As String * ReadMax
+
+Dim NumOfErrors As Long
+
+Dim tableIndex As Long
+Dim TsinceRain  As Long = 100
+Dim CS655cntr As Long
 
 'Declare Variables and Units
-Public BattV
-Public PTemp_C
-Public AirTC
-Public RH
-Public PVap
-Public SlrW
-Public SlrMJ
-Public CS655(6)
-Public WSData(3)
-Public N(8)
-Public Rain_mm
-'Public R_I_Hr
-'Public R_I_C
-Public BP_mbar
+Dim BattV
+Dim PTemp_C
+Dim AirTC
+Dim RH
+Dim PVap
+Dim SlrW
+Dim SlrMJ
+Dim CS655(6)
+Dim WSData(3)
+Dim N(8)
+Dim Rain_mm
+'Dim R_I_Hr
+'Dim R_I_C
+Dim BP_mbar
 
 Alias CS655(1) = VWC
 Alias CS655(2) = EC
@@ -202,20 +197,19 @@ EndTable
 
 DataTable(SendStat, True, -1)
   Sample(1, ReadLength, Long)
-  Sample(1, TX_Checksum, Long)
   Sample(1, SerialResponse1, String)
   Sample(1, SerialResponse2, String)
   Sample(1, SerialResponse3, String)
   Sample(1, SerialResponse4, String)
   Sample(1, SerialResponse5, String)
-  Sample(1, StringBuffer, String)
   Sample(1, SendTotal, Long)
 EndTable
 
 
 'String contatenation: Datalogger_cr1000.pdf, page: 282
-
-Sub IridiumTx2
+Sub IridiumTx
+  Dim StringBuffer As String * 64
+  Dim CSB1, CSB2, TX_Checksum As Long
   Timer(1, sec, 2)
 
   'Calculate checksum:
@@ -236,37 +230,59 @@ Sub IridiumTx2
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  'Send data including checksum:
-  SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
+  If Trim(SerialResponse2) <> "READY" Then
+    'An error occured
+    SerialOut(ComRS232,"AT+SBDWT=Modem not READY" + CHR(13), "0", 1, 500)
+    NumOfErrors = NumOfErrors + 1
+  EndIf
 
-  'SerialResponse3 should be 0 if everything went well.
-  'Otherwise see error codes in the manual:
-  'IRDM_ISU_ATCommandReference.pdf, page 95 / 110
-  '0: OK
-  '1: Timeout
-  '2: Checksum error
-  '3: Message size not correct
-  SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
+  'If there already was an error, don't try to send binary data
+  If NumOfErrors == 0 Then
+    'Send data including checksum:
+    SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
 
-  'Convert String respone to Integer
-  ErrorCode = LTrim(SerialResponse3)
+    'SerialResponse3 should be 0 if everything went well.
+    'Otherwise see error codes in the manual:
+    'IRDM_ISU_ATCommandReference.pdf, page 95 / 110
+    '0: OK
+    '1: Timeout
+    '2: Checksum error
+    '3: Message size not correct
+    SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
 
-  If ErrorCode == 0 Then
-    'No error, so do not try to resend
-    RetriesOnError = 0
-  Else
-    'An error occured.
-    'Try to send the error code to the user as ASCII Text
-    SerialOut(ComRS232,"AT+SBDWT=" + SerialResponse3 + CHR(13), "0", 1, 500)
-    'Decrease number of retries, so that we do not try to send the message forever
-    RetriesOnError = RetriesOnError - 1
+    'Convert String respone to Integer
+    ErrorCode = Trim(SerialResponse3)
+
+    If ErrorCode <> 0 Then
+      'An error occured.
+      'Try to send the error code to the user as ASCII Text
+      SerialOut(ComRS232,"AT+SBDWT=ErrorCode: " + ErrorCode + " in SerialOutBlock" + CHR(13), "0", 1, 500)
+      'Increase number of Errors, so that we know that this data frame was not sent correctly
+      NumOfErrors = NumOfErrors + 1
+    EndIf
   EndIf
 
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
   SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
+
+  'Clear modem buffer
   SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
   SerialIn(SerialResponse5, ComRS232, 6000, 13, 64)
+
   SerialClose(ComRS232)
+EndSub
+
+Sub IridiumSendText(Message As String)
+  'Initialize:
+  SerialOpen(ComRS232, 19200, 0, 0, 2000)
+  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
+
+  'Send message to modem:
+  SerialOut(ComRS232,"AT+SBDWT=" + Message + CHR(13), "0", 1, 500)
+
+  'Send message to satelite:
+  SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
+  SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
 EndSub
 
 'Main Program
@@ -299,7 +315,7 @@ BeginProg
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'Get data from WindSonic4
     SDI12Recorder(WindDir, 3, "0", "R0!", 1, 0)
-    If WindDir = NaN Then
+    If WindDir == NaN Then
       Move(WS_ms, 2, WindDir, 1)
     EndIf
     'Set diagnostic variables as needed
@@ -351,13 +367,18 @@ BeginProg
       For tableIndex = 1 To NumberDataTables Step 1
         FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
 
+        ' NewTableFile is true if a new file has been created.
+
         Do
           ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
           SendTotal = SendTotal + 1
-          RetriesOnError = 3
-          Do
-            Call(IridiumTx2)
-          Loop While RetriesOnError > 0
+          NumOfErrors = 0
+
+          Call(IridiumTx)
+          
+          If NumOfErrors > 0 Then
+            IridiumSendText("Number of errors: " + NumOfErrors)
+          EndIf
         Loop While ReadLength > 0
 
         FileClose(FileHandle)
