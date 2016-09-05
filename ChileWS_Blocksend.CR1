@@ -73,7 +73,7 @@ Dim FileHandle, ReadLength As Long
 Dim SendTotal, ErrorCode As Long
 Dim ReadString As String * ReadMax
 
-Dim NumOfErrors As Long
+Dim NumOfTxErrors As Long
 
 Dim tableIndex As Long
 Dim TsinceRain  As Long = 100
@@ -196,7 +196,6 @@ DataTable(RainHiRes, True, -1)
 EndTable
 
 DataTable(SendStat, True, -1)
-  Sample(1, ReadLength, Long)
   Sample(1, SerialResponse1, String)
   Sample(1, SerialResponse2, String)
   Sample(1, SerialResponse3, String)
@@ -226,18 +225,18 @@ Sub IridiumTx
   SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
 
   'Prepare send:
-  StringBuffer = "AT+SBDWB=" + (ReadLength + 2) + CHR(13)
+  StringBuffer = "AT+SBDWB=" + ReadLength + CHR(13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
   If Trim(SerialResponse2) <> "READY" Then
     'An error occured
     SerialOut(ComRS232,"AT+SBDWT=Modem not READY" + CHR(13), "0", 1, 500)
-    NumOfErrors = NumOfErrors + 1
+    NumOfTxErrors = NumOfTxErrors + 1
   EndIf
 
   'If there already was an error, don't try to send binary data
-  If NumOfErrors == 0 Then
+  If NumOfTxErrors == 0 Then
     'Send data including checksum:
     SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
 
@@ -258,7 +257,7 @@ Sub IridiumTx
       'Try to send the error code to the user as ASCII Text
       SerialOut(ComRS232,"AT+SBDWT=ErrorCode: " + ErrorCode + " in SerialOutBlock" + CHR(13), "0", 1, 500)
       'Increase number of Errors, so that we know that this data frame was not sent correctly
-      NumOfErrors = NumOfErrors + 1
+      NumOfTxErrors = NumOfTxErrors + 1
     EndIf
   EndIf
 
@@ -372,12 +371,12 @@ BeginProg
         Do
           ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
           SendTotal = SendTotal + 1
-          NumOfErrors = 0
+          NumOfTxErrors = 0
 
           Call(IridiumTx)
-          
-          If NumOfErrors > 0 Then
-            IridiumSendText("Number of errors: " + NumOfErrors)
+
+          If NumOfTxErrors > 0 Then
+            IridiumSendText("Number of tx errors: " + NumOfTxErrors)
           EndIf
         Loop While ReadLength > 0
 
@@ -385,6 +384,7 @@ BeginProg
 
         CallTable SendStat
       Next tableIndex
+      IridiumSendText("SendTotal: " + SendTotal)
       SendFiles = False
       PortSet (5, 0)
     EndIf
