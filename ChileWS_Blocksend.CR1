@@ -70,7 +70,7 @@ Dim SerialResponse5 As String * 64
 
 Dim SendFiles As Boolean
 Dim FileHandle, ReadLength As Long
-Dim SendTotal, ErrorCode As Long
+Dim ReadTotal, ErrorCode, PreviousFrameCount As Long
 Dim ReadString As String * ReadMax
 
 Dim NumOfTxErrors As Long
@@ -201,7 +201,7 @@ DataTable(SendStat, True, -1)
   Sample(1, SerialResponse3, String)
   Sample(1, SerialResponse4, String)
   Sample(1, SerialResponse5, String)
-  Sample(1, SendTotal, Long)
+  Sample(1, ReadTotal, Long)
 EndTable
 
 
@@ -209,14 +209,13 @@ EndTable
 Sub IridiumTx
   Dim StringBuffer As String * 64
   Dim CSB1, CSB2, TX_Checksum As Long
-  Timer(1, sec, 2)
 
   'Calculate checksum:
   TX_Checksum = CheckSum(ReadString, 23, ReadLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
   'And append it to the data that is going to be send:
-  ReadString(1, 1, ReadLength + 1) = CHR(CSB2)
+  ReadString(1, 1, ReadLength + 1) = CHR(CSB2) 'Send second byte first!
   ReadString(1, 1, ReadLength + 2) = CHR(CSB1)
 
   'Initialize:
@@ -229,14 +228,16 @@ Sub IridiumTx
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  If Trim(SerialResponse2) <> "READY" Then
+  SerialResponse2 = Trim(SerialResponse2)
+
+  If SerialResponse2 <> "READY" Then
     'An error occured
-    SerialOut(ComRS232,"AT+SBDWT=Modem not READY" + CHR(13), "0", 1, 500)
+    SerialOut(ComRS232,"AT+SBDWT=Modem not READY: " + SerialResponse2 + CHR(13), "0", 1, 500)
     NumOfTxErrors = NumOfTxErrors + 1
   EndIf
 
   'If there already was an error, don't try to send binary data
-  If NumOfTxErrors == 0 Then
+  If NumOfTxErrors = 0 Then
     'Send data including checksum:
     SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
 
@@ -288,6 +289,7 @@ EndSub
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
   SetStatus ("USRDriveSize", 32768)
+  PreviousFrameCount = 0
 
   'Main Scan
   Scan(1, min, 1, 0)
@@ -314,7 +316,7 @@ BeginProg
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'Get data from WindSonic4
     SDI12Recorder(WindDir, 3, "0", "R0!", 1, 0)
-    If WindDir == NaN Then
+    If WindDir = NaN Then
       Move(WS_ms, 2, WindDir, 1)
     EndIf
     'Set diagnostic variables as needed
@@ -354,12 +356,12 @@ BeginProg
       SendFiles = False
     EndIf
 
-    'Allow the modem 3 minutes for warm up before sending files
+    'Allow the modem 3 minutes for warm up before sending files.
     '1440 = 24 * 60
     '870 = (14 * 60) + 33
     If TimeIntoInterval (873, 1440, min) Then
       SendFiles = True
-      SendTotal = 0
+      ReadTotal = 0
     EndIf
 
     If SendFiles Then
@@ -369,14 +371,27 @@ BeginProg
         ' NewTableFile is true if a new file has been created.
 
         Do
+          'One frame is ReadMax - 2 bytes long.
           ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
-          SendTotal = SendTotal + 1
-          NumOfTxErrors = 0
+          'Number of times FileRead was called. Note that this is not necassaryly the
+          'number of frames, since FileRead can read in only a part of a frame.
+          ReadTotal = ReadTotal + 1
 
-          Call(IridiumTx)
+          'Only send frames that have not been sent yet,
+          'so do not send previous old frames again.
+          If ReadTotal > PreviousFrameCount Then
+            NumOfTxErrors = 0
 
-          If NumOfTxErrors > 0 Then
-            IridiumSendText("Number of tx errors: " + NumOfTxErrors)
+            Call(IridiumTx)
+
+            If NumOfTxErrors > 0 Then
+              IridiumSendText("Number of tx errors: " + NumOfTxErrors)
+            EndIf
+          EndIf
+
+          'Only increase frame counter if one whole frame was transfered.
+          If ReadLength = ReadMax - 2 Then
+            PreviousFrameCount = PreviousFrameCount + 1
           EndIf
         Loop While ReadLength > 0
 
@@ -384,7 +399,8 @@ BeginProg
 
         CallTable SendStat
       Next tableIndex
-      IridiumSendText("SendTotal: " + SendTotal)
+
+      IridiumSendText("ReadTotal: " + ReadTotal)
       SendFiles = False
       PortSet (5, 0)
     EndIf
