@@ -53,6 +53,16 @@ Const NumberDataTables=2
 'Page 11: "9522B: 1960 Bytes"
 Const ReadMax = 1960
 
+'1440 = 24 hours a day * 60 minutes per hour
+Const MinutesPerDay = 24 * 60
+
+
+'Time values (hour and minute) for modem on / off state
+'870 = (14 * 60) + 30
+Const HourModemOn = 14
+Const MinuteModemOn = 30
+Const TimeModemOn = (HourModemOn * 60) + MinuteModemOn
+
 'Require a variable for when a new DataTable file for transmission is created
 Dim NewTableFile(NumberDataTables) As Boolean
 
@@ -151,7 +161,7 @@ DataTable(SendHourly, True, -1)
 EndTable
 
 DataTable(SendDaily, True, -1)
-  DataInterval(0, 1440, min, 10)
+  DataInterval(0, MinutesPerDay, min, 10)
   TableFile ("USR:SendDaily", 1, 0, 1, 0, 0, NewTableFile(2), TableFileName(2))
   Minimum(1, BattV, FP2, False, False)
   Sample(1, WSDiag, FP2)
@@ -342,24 +352,19 @@ BeginProg
     CallTable RainHiRes
 
     'Turn on modem at 14:30 every 24 hours
-    '1440 = 24 hours a day * 60 minutes per hour
-    '870 = (14 * 60) + 30
-    If TimeIntoInterval (870, 1440, Min) Then
+    If TimeIntoInterval (TimeModemOn, MinutesPerDay, Min) Then
       PortSet (5,1)
     EndIf
 
     'Turn off modem at 14:50 every 24 hours
-    '1440 = 24 * 60
-    '870 = (14 * 60) + 50
-    If TimeIntoInterval (890, 1440, Min) Then
+    If TimeIntoInterval (TimeModemOn + 20, MinutesPerDay, Min) Then
       PortSet (5, 0)
       SendFiles = False
     EndIf
 
     'Allow the modem 3 minutes for warm up before sending files.
-    '1440 = 24 * 60
     '870 = (14 * 60) + 33
-    If TimeIntoInterval (873, 1440, min) Then
+    If TimeIntoInterval (TimeModemOn + 3, MinutesPerDay, Min) Then
       SendFiles = True
       ReadTotal = 0
     EndIf
