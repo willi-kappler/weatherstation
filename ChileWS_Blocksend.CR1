@@ -391,6 +391,7 @@ BeginProg
 
             If NumOfTxErrors > 0 Then
               IridiumSendText("Number of tx errors: " + NumOfTxErrors)
+              'TODO: save ReadTotal in order to resend missing frame on the next day.
             EndIf
           EndIf
 
