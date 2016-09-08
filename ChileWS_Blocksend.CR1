@@ -242,7 +242,7 @@ Sub IridiumTx
 
   If SerialResponse2 <> "READY" Then
     'An error occured
-    SerialOut(ComRS232,"AT+SBDWT=Modem not READY: " + SerialResponse2 + CHR(13), "0", 1, 500)
+    SerialOut(ComRS232,"AT+SBDWT=Modem not READY: '" + SerialResponse2 + "'" + CHR(13), "0", 1, 500)
     NumOfTxErrors = NumOfTxErrors + 1
   EndIf
 
@@ -293,6 +293,8 @@ Sub IridiumSendText(Message As String)
   'Send message to satelite:
   SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
   SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
+
+  SerialClose(ComRS232)
 EndSub
 
 'Main Program
