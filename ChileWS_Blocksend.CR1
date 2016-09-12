@@ -238,14 +238,6 @@ Sub IridiumTx
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  SerialResponse2 = Trim(SerialResponse2)
-
-  If SerialResponse2 <> "READY" Then
-    'An error occured
-    SerialOut(ComRS232,"AT+SBDWT=Modem not READY: '" + SerialResponse2 + "'" + CHR(13), "0", 1, 500)
-    NumOfTxErrors = NumOfTxErrors + 1
-  EndIf
-
   'If there already was an error, don't try to send binary data
   If NumOfTxErrors = 0 Then
     'Send data including checksum:
