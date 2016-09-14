@@ -372,26 +372,28 @@ BeginProg
         Do
           'One frame is ReadMax - 2 bytes long.
           ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
-          'Number of times FileRead was called. Note that this is not necassaryly the
-          'number of frames, since FileRead can read in only a part of a frame.
-          ReadTotal = ReadTotal + 1
+          If ReadLength > 0 Then
+            'Number of times FileRead was called. Note that this is not necassaryly the
+            'number of frames, since FileRead can read in only a part of a frame.
+            ReadTotal = ReadTotal + 1
 
-          'Only send frames that have not been sent yet,
-          'so do not send previous old frames again.
-          If ReadTotal > PreviousFrameCount Then
-            NumOfTxErrors = 0
+            'Only send frames that have not been sent yet,
+            'so do not send previous old frames again.
+            If ReadTotal > PreviousFrameCount Then
+              NumOfTxErrors = 0
 
-            Call(IridiumTx)
+              Call(IridiumTx)
 
-            If NumOfTxErrors > 0 Then
-              IridiumSendText("Number of tx errors: " + NumOfTxErrors)
-              'TODO: save ReadTotal in order to resend missing frame on the next day.
+              If NumOfTxErrors > 0 Then
+                IridiumSendText("Number of tx errors: " + NumOfTxErrors)
+                'TODO: save ReadTotal in order to resend missing frame on the next day.
+              EndIf
             EndIf
-          EndIf
 
-          'Only increase frame counter if one whole frame was transfered.
-          If ReadLength = ReadMax - 2 Then
-            PreviousFrameCount = PreviousFrameCount + 1
+            'Only increase frame counter if one whole frame was transfered.
+            If ReadLength = ReadMax - 2 Then
+              PreviousFrameCount = PreviousFrameCount + 1
+            EndIf
           EndIf
         Loop While ReadLength > 0
 
