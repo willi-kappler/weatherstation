@@ -372,6 +372,7 @@ BeginProg
         Do
           'One frame is ReadMax - 2 bytes long.
           ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
+          'Avoid sending empty messages
           If ReadLength > 0 Then
             'Number of times FileRead was called. Note that this is not necassaryly the
             'number of frames, since FileRead can read in only a part of a frame.
