@@ -56,6 +56,18 @@ Const ReadMax = 1960
 '1440 = 24 hours a day * 60 minutes per hour
 Const MinutesPerDay = 24 * 60
 
+'5 means TOB1, binary file without header but with time stamp
+'See Datalogger_cr1000.pdf, Page 378
+Const TableFormatOption = 5
+
+'0 means overwrite the same file each time
+Const TableMaxFiles = 0
+
+'Number of record per file, after this numer is reached old values will be overwritten
+Const TableNumRecsHourly = 24
+Const TableNumRecsDaily = 1
+
+
 
 'Time values (hour and minute) for modem on / off state
 '870 = (14 * 60) + 30
@@ -79,11 +91,12 @@ Dim SerialResponse4 As String * 64
 Dim SerialResponse5 As String * 64
 
 Dim SendFiles As Boolean
-Dim FileHandle, ReadLength As Long
-Dim ReadTotal, ErrorCode, PreviousFrameCount As Long
-Dim ReadString As String * ReadMax
+Dim FileHandle, TxDataLength, ErrorCode, NumOfTxErrors As Long
+Dim TxMeasureData As String * ReadMax
 
-Dim NumOfTxErrors As Long
+'Save the data if an error occured. Send this data on the next day.
+Dim SavedData As String * ReadMax
+Dim SavedLength As Long
 
 Dim tableIndex As Long
 Dim TsinceRain  As Long = 100
@@ -146,7 +159,7 @@ Units WSDiag=unitless
 'Define Data Tables
 DataTable(SendHourly, True, -1)
   DataInterval(0, 60, min, 10)
-  TableFile ("USR:SendHourly", 1, 0, 24, 0, 0, NewTableFile(1), TableFileName(1))
+  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TableNumRecsHourly, 0, 0, NewTableFile(1), TableFileName(1))
   Average(1, AirTC, FP2, False)
   Sample(1, RH, FP2)
   Average(1, SlrW, FP2, False)
@@ -162,7 +175,7 @@ EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
-  TableFile ("USR:SendDaily", 1, 0, 1, 0, 0, NewTableFile(2), TableFileName(2))
+  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TableNumRecsDaily, 0, 0, NewTableFile(2), TableFileName(2))
   Minimum(1, BattV, FP2, False, False)
   Sample(1, WSDiag, FP2)
 EndTable
@@ -211,7 +224,6 @@ DataTable(SendStat, True, -1)
   Sample(1, SerialResponse3, String)
   Sample(1, SerialResponse4, String)
   Sample(1, SerialResponse5, String)
-  Sample(1, ReadTotal, Long)
 EndTable
 
 
@@ -221,12 +233,12 @@ Sub IridiumTx
   Dim CSB1, CSB2, TX_Checksum As Long
 
   'Calculate checksum:
-  TX_Checksum = CheckSum(ReadString, 23, ReadLength)
+  TX_Checksum = CheckSum(TxMeasureData, 23, TxDataLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
   'And append it to the data that is going to be send:
-  ReadString(1, 1, ReadLength + 1) = CHR(CSB2) 'Send second byte first!
-  ReadString(1, 1, ReadLength + 2) = CHR(CSB1)
+  TxMeasureData(1, 1, TxDataLength + 1) = CHR(CSB2) 'Send second byte first!
+  TxMeasureData(1, 1, TxDataLength + 2) = CHR(CSB1)
 
   'Initialize:
   SerialOpen(ComRS232, 19200, 0, 0, 2000)
@@ -234,14 +246,14 @@ Sub IridiumTx
   SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
 
   'Prepare send:
-  StringBuffer = "AT+SBDWB=" + ReadLength + CHR(13)
+  StringBuffer = "AT+SBDWB=" + TxDataLength + CHR(13)
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
   'If there already was an error, don't try to send binary data
   If NumOfTxErrors = 0 Then
     'Send data including checksum:
-    SerialOutBlock(ComRS232, ReadString, ReadLength + 2)
+    SerialOutBlock(ComRS232, TxMeasureData, TxDataLength + 2)
 
     'SerialResponse3 should be 0 if everything went well.
     'Otherwise see error codes in the manual:
@@ -293,7 +305,7 @@ EndSub
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
   SetStatus ("USRDriveSize", 32768)
-  PreviousFrameCount = 0
+  SavedLength = 0
 
   'Main Scan
   Scan(1, min, 1, 0)
@@ -357,53 +369,54 @@ BeginProg
     EndIf
 
     'Allow the modem 3 minutes for warm up before sending files.
-    '870 = (14 * 60) + 33
     If TimeIntoInterval (TimeModemOn + 3, MinutesPerDay, Min) Then
       SendFiles = True
-      ReadTotal = 0
     EndIf
 
     If SendFiles Then
+
+      'Are there some leftovers of the previous day ?
+      'If yes try to send it now if the battery has enough power
+      If SavedLength > 0 AND BattV >= 11.5 Then
+        TxMeasureData = SavedData
+        TxDataLength = SavedLength
+
+        NumOfTxErrors = 0
+
+        Call(IridiumTx)
+
+        If NumOfTxErrors == 0 Then
+          'Transmission successfully, clean saved data
+          SavedLength = 0
+        EndIf
+      EndIf
+
       For tableIndex = 1 To NumberDataTables Step 1
         FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
-
         ' NewTableFile is true if a new file has been created.
 
-        Do
-          'One frame is ReadMax - 2 bytes long.
-          ReadLength = FileRead(FileHandle, ReadString, ReadMax - 2)
-          'Avoid sending empty messages
-          If ReadLength > 0 Then
-            'Number of times FileRead was called. Note that this is not necassaryly the
-            'number of frames, since FileRead can read in only a part of a frame.
-            ReadTotal = ReadTotal + 1
+        'One frame is ReadMax - 2 bytes long.
+        TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
+        Do While TxDataLength > 0
+          NumOfTxErrors = 0
 
-            'Only send frames that have not been sent yet,
-            'so do not send previous old frames again.
-            If ReadTotal > PreviousFrameCount Then
-              NumOfTxErrors = 0
+          Call(IridiumTx)
 
-              Call(IridiumTx)
+          If NumOfTxErrors > 0 Then
+            IridiumSendText("Number of tx errors: " + NumOfTxErrors)
 
-              If NumOfTxErrors > 0 Then
-                IridiumSendText("Number of tx errors: " + NumOfTxErrors)
-                'TODO: save ReadTotal in order to resend missing frame on the next day.
-              EndIf
-            EndIf
-
-            'Only increase frame counter if one whole frame was transfered.
-            If ReadLength = ReadMax - 2 Then
-              PreviousFrameCount = PreviousFrameCount + 1
-            EndIf
+            'Save the data to be send later (next day)
+            SavedData = TxMeasureData
+            SavedLength = TxDataLength
           EndIf
-        Loop While ReadLength > 0
+          TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
+        Loop
 
         FileClose(FileHandle)
 
         CallTable SendStat
       Next tableIndex
 
-      IridiumSendText("ReadTotal: " + ReadTotal)
       SendFiles = False
       PortSet (5, 0)
     EndIf
