@@ -80,8 +80,6 @@ Dim NewTableFile(NumberDataTables) As Boolean
 
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
-Dim FileLen(NumberDataTables) As Long
-Dim HeadLen(NumberDataTables) As Long
 
 'Message Sending Status Variables
 Dim SerialResponse1 As String * 64
@@ -385,7 +383,7 @@ BeginProg
 
         Call(IridiumTx)
 
-        If NumOfTxErrors == 0 Then
+        If NumOfTxErrors = 0 Then
           'Transmission successfully, clean saved data
           SavedLength = 0
         EndIf
