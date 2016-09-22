@@ -47,7 +47,6 @@
 StationName ("WanneTUE")
 
 Const NumberDataTables=2
-'Variables for Iridium Configuration
 
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
@@ -67,16 +66,14 @@ Const TableMaxFiles = 0
 Const TableNumRecsHourly = 24
 Const TableNumRecsDaily = 1
 
-
-
 'Time values (hour and minute) for modem on / off state
 '870 = (14 * 60) + 30
 Const HourModemOn = 14
 Const MinuteModemOn = 30
 Const TimeModemOn = (HourModemOn * 60) + MinuteModemOn
 
-'Require a variable for when a new DataTable file for transmission is created
-Dim NewTableFile(NumberDataTables) As Boolean
+'Number of days to store data of failed transmission
+Const MaxNumberOfFailures = 3
 
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
@@ -93,8 +90,9 @@ Dim FileHandle, TxDataLength, ErrorCode, NumOfTxErrors As Long
 Dim TxMeasureData As String * ReadMax
 
 'Save the data if an error occured. Send this data on the next day.
-Dim SavedData As String * ReadMax
-Dim SavedLength As Long
+'Store the last three failures
+Dim SavedData(MaxNumberOfFailures) As String * ReadMax
+Dim SavedLength(MaxNumberOfFailures) As Long
 
 Dim tableIndex As Long
 Dim TsinceRain  As Long = 100
@@ -157,7 +155,7 @@ Units WSDiag=unitless
 'Define Data Tables
 DataTable(SendHourly, True, -1)
   DataInterval(0, 60, min, 10)
-  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TableNumRecsHourly, 0, 0, NewTableFile(1), TableFileName(1))
+  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TableNumRecsHourly, 0, 0, 0, TableFileName(1))
   Average(1, AirTC, FP2, False)
   Sample(1, RH, FP2)
   Average(1, SlrW, FP2, False)
@@ -173,7 +171,7 @@ EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
-  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TableNumRecsDaily, 0, 0, NewTableFile(2), TableFileName(2))
+  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TableNumRecsDaily, 0, 0, 0, TableFileName(2))
   Minimum(1, BattV, FP2, False, False)
   Sample(1, WSDiag, FP2)
 EndTable
@@ -225,7 +223,6 @@ DataTable(SendStat, True, -1)
 EndTable
 
 
-'String contatenation: Datalogger_cr1000.pdf, page: 282
 Sub IridiumTx
   Dim StringBuffer As String * 64
   Dim CSB1, CSB2, TX_Checksum As Long
@@ -234,6 +231,8 @@ Sub IridiumTx
   TX_Checksum = CheckSum(TxMeasureData, 23, TxDataLength)
   CSB1 = TX_Checksum AND &B11111111
   CSB2 = (TX_Checksum >> 8)  AND &B11111111
+
+  'String contatenation: Datalogger_cr1000.pdf, page: 282
   'And append it to the data that is going to be send:
   TxMeasureData(1, 1, TxDataLength + 1) = CHR(CSB2) 'Send second byte first!
   TxMeasureData(1, 1, TxDataLength + 2) = CHR(CSB1)
@@ -303,7 +302,11 @@ EndSub
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
   SetStatus ("USRDriveSize", 32768)
-  SavedLength = 0
+
+  'Initialize storage for failed transmissions
+  For i = 1 To MaxNumberOfFailures Step 1
+    SavedLength(i) = 0
+  Next i
 
   'Main Scan
   Scan(1, min, 1, 0)
@@ -375,23 +378,24 @@ BeginProg
 
       'Are there some leftovers of the previous day ?
       'If yes try to send it now if the battery has enough power
-      If SavedLength > 0 AND BattV >= 11.5 Then
-        TxMeasureData = SavedData
-        TxDataLength = SavedLength
+      For i = 1 To MaxNumberOfFailures Step 1
+        If SavedLength(i) > 0 AND BattV >= 11.5 Then
+          TxMeasureData = SavedData(i)
+          TxDataLength = SavedLength(i)
 
-        NumOfTxErrors = 0
+          NumOfTxErrors = 0
 
-        Call(IridiumTx)
+          Call(IridiumTx)
 
-        If NumOfTxErrors = 0 Then
-          'Transmission successfully, clean saved data
-          SavedLength = 0
+          If NumOfTxErrors = 0 Then
+            'Transmission successfully, clear saved data
+            SavedLength(i) = 0
+          EndIf
         EndIf
-      EndIf
+      Next i
 
       For tableIndex = 1 To NumberDataTables Step 1
         FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
-        ' NewTableFile is true if a new file has been created.
 
         'One frame is ReadMax - 2 bytes long.
         TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
@@ -404,8 +408,14 @@ BeginProg
             IridiumSendText("Number of tx errors: " + NumOfTxErrors)
 
             'Save the data to be send later (next day)
-            SavedData = TxMeasureData
-            SavedLength = TxDataLength
+            For i = 1 To MaxNumberOfFailures Step 1
+              'Search for an empty (unused) slot
+              If SavedLength(i) = 0 Then
+                SavedData(i) = TxMeasureData
+                SavedLength(i) = TxDataLength
+                ExitFor
+              EndIf
+            Next
           EndIf
           TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
         Loop
