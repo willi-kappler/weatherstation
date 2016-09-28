@@ -98,7 +98,7 @@ Dim SerialResponse4 As String * 64
 Dim SerialResponse5 As String * 64
 
 Dim SendFiles As Boolean
-Dim FileHandle, TxDataLength, ErrorCode, NumOfTxErrors As Long
+Dim FileHandle, TxDataLength, ErrorCode, NumOfTxErrors, i As Long
 Dim TxMeasureData As String * ReadMax
 
 'Save the data if an error occured. Send this data on the next day.
@@ -166,7 +166,7 @@ Units WSDiag=unitless
 'Define Data Tables
 DataTable(SendHourly, True, -1)
   DataInterval(0, MinutesPerHour, min, 10)
-  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, minutes, 0, TableFileName(1))
+  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
   Average(1, AirTC, FP2, False)
   Sample(1, RH, FP2)
   Average(1, SlrW, FP2, False)
@@ -182,7 +182,7 @@ EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
-  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, minutes, 0, TableFileName(2))
+  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
   Minimum(1, BattV, FP2, False, False)
   Sample(1, WSDiag, FP2)
 EndTable
@@ -419,8 +419,6 @@ BeginProg
         Loop
 
         FileClose(FileHandle)
-
-        CallTable SendStat
       Next tableIndex
 
       SendFiles = False
