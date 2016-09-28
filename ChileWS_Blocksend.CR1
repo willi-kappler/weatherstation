@@ -53,7 +53,9 @@ Const NumberDataTables=2
 Const ReadMax = 1960
 
 '1440 = 24 hours a day * 60 minutes per hour
-Const MinutesPerDay = 24 * 60
+Const MinutesPerHour = 60
+Const MinutesPerDay = 24 * MinutesPerHour
+
 
 '5 means TOB1, binary file without header but with time stamp
 'See Datalogger_cr1000.pdf, Page 378
@@ -62,22 +64,24 @@ Const TableFormatOption = 5
 '0 means overwrite the same file each time
 Const TableMaxFiles = 0
 
-'Number of record per file, after this numer is reached old values will be overwritten
-Const TableNumRecsHourly = 24
-Const TableNumRecsDaily = 1
+'Write data table to CF card every day at 12:10h
+'Thus we have at least one data record (at 12:00h) that will be send at 12:20h
+Const HourTableWrite = 12
+Const MinuteTableWrite = 10
+Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
+
 
 'Time values (hour and minute) for modem on / off state
 
-'Turn on modem at 14:30 every 24 hours
-'870 = (14 * 60) + 30
-Const HourModemOn = 14
-Const MinuteModemOn = 30
+'Turn on modem at 12:20 every 24 hours
+Const HourModemOn = 12
+Const MinuteModemOn = 20
 Const TimeModemOn = (HourModemOn * 60) + MinuteModemOn
 
 'Keep modem avtive for 50 minutes
 Const ModemActiveDuration = 50
 
-'Turn off modem at 15:20 every 24 hours
+'Turn off modem at 13:10 every 24 hours
 Const TimeModemOff = TimeModemOn + ModemActiveDuration
 
 'Number of days to store data of failed transmission
@@ -159,11 +163,10 @@ Units WindDir=degrees
 Units WS_ms=meters/second
 Units WSDiag=unitless
 
-
 'Define Data Tables
 DataTable(SendHourly, True, -1)
-  DataInterval(0, 60, min, 10)
-  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TableNumRecsHourly, 0, 0, 0, TableFileName(1))
+  DataInterval(0, MinutesPerHour, min, 10)
+  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, minutes, 0, TableFileName(1))
   Average(1, AirTC, FP2, False)
   Sample(1, RH, FP2)
   Average(1, SlrW, FP2, False)
@@ -179,7 +182,7 @@ EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
-  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TableNumRecsDaily, 0, 0, 0, TableFileName(2))
+  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, minutes, 0, TableFileName(2))
   Minimum(1, BattV, FP2, False, False)
   Sample(1, WSDiag, FP2)
 EndTable
@@ -212,7 +215,6 @@ DataTable(SaveFull, True, -1)
   Average(1, BP_mbar, FP2, False)
 EndTable
 
-
 DataTable(RainHiRes, True, -1)
   DataInterval(0, 5, min, 10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
@@ -221,15 +223,6 @@ DataTable(RainHiRes, True, -1)
   Sample(1, VWC, FP2
   Sample(1, GrTemp, FP2)
 EndTable
-
-DataTable(SendStat, True, -1)
-  Sample(1, SerialResponse1, String)
-  Sample(1, SerialResponse2, String)
-  Sample(1, SerialResponse3, String)
-  Sample(1, SerialResponse4, String)
-  Sample(1, SerialResponse5, String)
-EndTable
-
 
 Sub IridiumTx
   Dim StringBuffer As String * 64
