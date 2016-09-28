@@ -67,10 +67,18 @@ Const TableNumRecsHourly = 24
 Const TableNumRecsDaily = 1
 
 'Time values (hour and minute) for modem on / off state
+
+'Turn on modem at 14:30 every 24 hours
 '870 = (14 * 60) + 30
 Const HourModemOn = 14
 Const MinuteModemOn = 30
 Const TimeModemOn = (HourModemOn * 60) + MinuteModemOn
+
+'Keep modem avtive for 50 minutes
+Const ModemActiveDuration = 50
+
+'Turn off modem at 15:20 every 24 hours
+Const TimeModemOff = TimeModemOn + ModemActiveDuration
 
 'Number of days to store data of failed transmission
 Const MaxNumberOfFailures = 3
@@ -358,13 +366,11 @@ BeginProg
     CallTable SaveFull
     CallTable RainHiRes
 
-    'Turn on modem at 14:30 every 24 hours
     If TimeIntoInterval (TimeModemOn, MinutesPerDay, Min) Then
-      PortSet (5,1)
+      PortSet (5, 1)
     EndIf
 
-    'Turn off modem at 14:50 every 24 hours
-    If TimeIntoInterval (TimeModemOn + 20, MinutesPerDay, Min) Then
+    If TimeIntoInterval (TimeModemOff, MinutesPerDay, Min) Then
       PortSet (5, 0)
       SendFiles = False
     EndIf
@@ -375,7 +381,6 @@ BeginProg
     EndIf
 
     If SendFiles Then
-
       'Are there some leftovers of the previous day ?
       'If yes try to send it now if the battery has enough power
       For i = 1 To MaxNumberOfFailures Step 1
