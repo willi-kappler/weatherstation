@@ -46,7 +46,9 @@
 '
 StationName ("WanneTUE")
 
-Const NumberDataTables=2
+Const MaxNumberOfRecords = 100000
+
+Const NumberDataTables = 2
 
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
@@ -184,12 +186,13 @@ DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
   TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
   Minimum(1, BattV, FP2, False, False)
+  Sample(1, Status.LithiumBattery, FP2)
   Sample(1, WSDiag, FP2)
 EndTable
 
 DataTable(SaveFull, True, -1)
   DataInterval(0, 30, min, 10)
-  CardOut(0, 536870912)
+  CardOut(0, MaxNumberOfRecords)
   Average(1, BattV, FP2, False)
   Average(1, PTemp_C, FP2, False)
   Average(1, AirTC, FP2, False)
@@ -218,7 +221,7 @@ EndTable
 DataTable(RainHiRes, True, -1)
   DataInterval(0, 5, min, 10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
-  CardOut(0, 536870912)
+  CardOut(0, MaxNumberOfRecords)
   Totalize(1, Rain_mm, FP2, False)
   Sample(1, VWC, FP2
   Sample(1, GrTemp, FP2)
