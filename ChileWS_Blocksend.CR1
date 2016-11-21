@@ -391,9 +391,10 @@ BeginProg
           TxMeasureData = SavedData(i)
           TxDataLength = SavedLength(i)
 
+          Call IridiumSendText("Try to resend msg no.: " + i)
           NumOfTxErrors = 0
 
-          Call(IridiumTx)
+          Call IridiumTx()
 
           If NumOfTxErrors = 0 Then
             'Transmission successfully, clear saved data
@@ -410,10 +411,10 @@ BeginProg
         Do While TxDataLength > 0
           NumOfTxErrors = 0
 
-          Call(IridiumTx)
+          Call IridiumTx()
 
           If NumOfTxErrors > 0 Then
-            IridiumSendText("Number of tx errors: " + NumOfTxErrors)
+            Call IridiumSendText("Number of tx errors: " + NumOfTxErrors)
 
             'Save the data to be send later (next day)
             For i = 1 To MaxNumberOfFailures Step 1
