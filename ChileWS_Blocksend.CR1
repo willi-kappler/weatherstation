@@ -93,16 +93,16 @@ Const MaxNumberOfFailures = 3
 Dim TableFileName(NumberDataTables) As String * 40
 
 'Message Sending Status Variables
-Dim SerialResponse1 As String * 64
-Dim SerialResponse2 As String * 64
-Dim SerialResponse3 As String * 64
-Dim SerialResponse4 As String * 64
-Dim SerialResponse5 As String * 64
+Public SerialResponse1 As String * 64
+Public SerialResponse2 As String * 64
+Public SerialResponse3 As String * 64
+Public SerialResponse4 As String * 64
+Public SerialResponse5 As String * 64
 
 Dim SendFiles As Boolean
 Dim FileHandle, TxDataLength, NumOfTxErrors, i As Long
 Dim TxMeasureData As String * ReadMax
-Dim ErrorCode(6) As Long
+Public ErrorCode(6) As Long
 
 'Save the data if an error occured. Send this data on the next day.
 'Store the last three failures
@@ -114,20 +114,20 @@ Dim TsinceRain  As Long = 100
 Dim CS655cntr As Long
 
 'Declare Variables and Units
-Dim BattV
-Dim PTemp_C
-Dim AirTC
-Dim RH
-Dim PVap
-Dim SlrW
-Dim SlrMJ
-Dim CS655(6)
-Dim WSData(3)
-Dim N(8)
-Dim Rain_mm
-'Dim R_I_Hr
-'Dim R_I_C
-Dim BP_mbar
+Public BattV
+Public PTemp_C
+Public AirTC
+Public RH
+Public PVap
+Public SlrW
+Public SlrMJ
+Public CS655(6)
+Public WSData(3)
+Public N(8)
+Public Rain_mm
+'Public R_I_Hr
+'Public R_I_C
+Public BP_mbar
 
 Alias CS655(1) = VWC
 Alias CS655(2) = EC
