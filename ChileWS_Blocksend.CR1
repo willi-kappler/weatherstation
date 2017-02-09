@@ -342,6 +342,7 @@ BeginProg
     SlrW = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
+    'WindSonic4 has a fixed frequency set to 1 Hz. See WindSensor_windsonic.pdf, page 10 / 18
     'Get data from WindSonic4
     SDI12Recorder(WindDir, 3, "0", "R0!", 1, 0)
     If WindDir = NaN Then
