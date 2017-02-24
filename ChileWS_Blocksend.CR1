@@ -336,7 +336,7 @@ BeginProg
     VaporPressure(PVap, AirTC, RH)
 
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
-    VoltSe(SlrW, 1, mV250, 3, 1, 0, _50Hz, 1.0, 0)
+    VoltSe(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
     If SlrW < 0 Then SlrW = 0
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
     SlrW = SlrW * 5.0  'Convert mV to W/m²
