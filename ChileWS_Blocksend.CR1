@@ -120,6 +120,7 @@ Public AirTC
 Public RH
 Public PVap
 Public SlrW
+Public prev_SlrW
 Public SlrMJ
 Public CS655(6)
 Public WSData(3)
@@ -153,6 +154,7 @@ Units AirTC=Deg C
 Units RH=%
 Units PVap=kPa
 Units SlrW=W/m²
+Units prev_SlrW=W/m²
 Units SlrMJ=MJ/m²
 Units Rain_mm=mm
 Units BP_mbar=mbar
@@ -319,6 +321,8 @@ BeginProg
     SavedLength(i) = 0
   Next i
 
+  prev_SlrW = 0 'Initialize solar value
+
   'Main Scan
   Scan(1, min, 1, 0)
 
@@ -338,7 +342,9 @@ BeginProg
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
     VoltSe(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
     If SlrW < 0 Then SlrW = 0
+    If SlrW = NAN Then SlrW = prev_SlrW 'If value exceeds (NaN) set to previous value
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
+    prev_SlrW = SlrW 'Store valid value
     SlrW = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
