@@ -50,6 +50,10 @@ Const MaxNumberOfRecords = 100000
 
 Const NumberDataTables = 2
 
+'NaN counter constants for sensors
+Const NumberOfSensors = 10
+Const ID_SOLAR = 1
+
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
 Const ReadMax = 1960
@@ -121,7 +125,8 @@ Public RH
 Public PVap
 Public SlrW
 Public prefSlrW
-Public solarNaNCounter
+Public NaNCounter(NumberOfSensors) As Long
+Public NaNCode As Long
 Public SlrMJ
 Public CS655(6)
 Public WSData(3)
@@ -220,7 +225,7 @@ DataTable(SaveFull, True, -1)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
   Totalize(1, Rain_mm, FP2, False)
   Average(1, BP_mbar, FP2, False)
-  Sample(1, solarNaNCounter, Int, False)
+  Sample(1, NaNCode, Long, False)
 EndTable
 
 DataTable(RainHiRes, True, -1)
@@ -239,7 +244,7 @@ Sub IridiumTx
   'Calculate checksum:
   TX_Checksum = CheckSum(TxMeasureData, 23, TxDataLength)
   CSB1 = TX_Checksum AND &B11111111
-  CSB2 = (TX_Checksum >> 8)  AND &B11111111
+  CSB2 = (TX_Checksum >> 8) AND &B11111111
 
   'String contatenation: Datalogger_cr1000.pdf, page: 282
   'And append it to the data that is going to be send:
@@ -298,21 +303,6 @@ Sub IridiumTx
   SerialClose(ComRS232)
 EndSub
 
-Sub IridiumSendText(Message As String)
-  'Initialize:
-  SerialOpen(ComRS232, 19200, 0, 0, 2000)
-  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
-
-  'Send message to modem:
-  SerialOut(ComRS232,"AT+SBDWT=" + Message + CHR(13), "0", 1, 500)
-
-  'Send message to satelite:
-  SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
-  SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
-
-  SerialClose(ComRS232)
-EndSub
-
 'Main Program
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
@@ -324,7 +314,10 @@ BeginProg
   Next i
 
   prefSlrW = 0 'Initialize solar value
-  solarNaNCounter = 0
+
+  For i = 1 To NumberOfSensors Step 1
+    NaNCounter(i) = 0
+  Next i
 
   'Main Scan
   Scan(1, min, 1, 0)
@@ -347,7 +340,7 @@ BeginProg
     If SlrW < 0 Then SlrW = 0
     If SlrW = NaN Then
       SlrW = prefSlrW 'If value exceeds (NaN) set to previous value
-      solarNaNCounter = solarNaNCounter + 1 'Increase counter to see how many values are Nan
+      NaNCounter(ID_SOLAR) = NaNCounter(ID_SOLAR) + 1 'Increase counter to see how many values are NaN
     EndIf
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
     prefSlrW = SlrW 'Store valid value
@@ -389,7 +382,9 @@ BeginProg
     If TimeIntoInterval (TimeModemOff, MinutesPerDay, Min) Then
       PortSet (5, 0)
       SendFiles = False
-      solarNaNCounter = 0 'Reset solar nan counter every day after sending data
+      For i = 1 To NumberOfSensors Step 1
+        NaNCounter(i) = 0 'Reset solar NaN counter every day after sending data
+      Next i
     EndIf
 
     'Allow the modem 3 minutes for warm up before sending files.
@@ -405,7 +400,6 @@ BeginProg
           TxMeasureData = SavedData(i)
           TxDataLength = SavedLength(i)
 
-          Call IridiumSendText("Try to resend msg no.: " + i)
           NumOfTxErrors = 0
 
           Call IridiumTx()
@@ -428,8 +422,6 @@ BeginProg
           Call IridiumTx()
 
           If NumOfTxErrors > 0 Then
-            Call IridiumSendText("Number of tx errors: " + NumOfTxErrors)
-
             'Save the data to be send later (next day)
             For i = 1 To MaxNumberOfFailures Step 1
               'Search for an empty (unused) slot
