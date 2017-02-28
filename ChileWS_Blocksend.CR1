@@ -51,8 +51,21 @@ Const MaxNumberOfRecords = 100000
 Const NumberDataTables = 2
 
 'NaN counter constants for sensors
-Const NumberOfSensors = 10
-Const ID_SOLAR = 1
+Const NumberOfSensors = 14
+Const ID_AIRTC = 1
+Const ID_RH = 2
+Const ID_SOLAR = 3
+Const ID_WINDDIR = 4
+Const ID_WSMS = 5
+Const ID_WSDIAG = 6
+Const ID_RAINMM = 7
+Const ID_BPMBAR = 8
+Const ID_VWC = 9
+Const ID_EC = 10
+Const ID_GRTEMP = 11
+Const ID_P = 12
+Const ID_PA = 13
+Const ID_VR = 14
 
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
@@ -76,7 +89,6 @@ Const HourTableWrite = 12
 Const MinuteTableWrite = 10
 Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
 
-
 'Time values (hour and minute) for modem on / off state
 
 'Turn on modem at 12:20 every 24 hours
@@ -89,6 +101,9 @@ Const ModemActiveDuration = 50
 
 'Turn off modem at 13:10 every 24 hours
 Const TimeModemOff = TimeModemOn + ModemActiveDuration
+
+'Allow the modem 3 minutes for warm up before sending files.
+Const TimeModemWarmUp = 3
 
 'Number of days to store data of failed transmission
 Const MaxNumberOfFailures = 3
@@ -124,13 +139,12 @@ Public AirTC
 Public RH
 Public PVap
 Public SlrW
-Public prefSlrW
+Public prevValidValue(NumberOfSensors)
 Public NaNCounter(NumberOfSensors) As Long
 Public NaNCode As Long
 Public SlrMJ
 Public CS655(6)
 Public WSData(3)
-Public N(8)
 Public Rain_mm
 'Public R_I_Hr
 'Public R_I_C
@@ -145,14 +159,6 @@ Alias CS655(6) = VR
 Alias WSData(1) = WindDir
 Alias WSData(2) = WS_ms
 Alias WSData(3) = WSDiag
-Alias N(1) = SmplsF
-Alias N(2) = Diag1F
-Alias N(3) = Diag2F
-Alias N(4) = Diag4F
-Alias N(5) = Diag8F
-Alias N(6) = Diag9F
-Alias N(7) = Diag10F
-Alias N(8) = NNDF
 
 Units BattV=Volts
 Units PTemp_C=Deg C
@@ -160,7 +166,6 @@ Units AirTC=Deg C
 Units RH=%
 Units PVap=kPa
 Units SlrW=W/m²
-Units prefSlrW=W/m²
 Units SlrMJ=MJ/m²
 Units Rain_mm=mm
 Units BP_mbar=mbar
@@ -261,7 +266,7 @@ Sub IridiumTx
   SerialOut(ComRS232, StringBuffer, "", 1, 10)
   SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
 
-  'If there already was an error, don't try to send binary data
+  'If there already was an error, don't try to send binary data at all
   If NumOfTxErrors = 0 Then
     'Send data including checksum:
     SerialOutBlock(ComRS232, TxMeasureData, TxDataLength + 2)
@@ -286,8 +291,6 @@ Sub IridiumTx
 
     If ErrorCode(1) <> 0 Then
       'An error occured.
-      'Try to send the error code to the user as ASCII Text
-      SerialOut(ComRS232,"AT+SBDWT=ErrorCode: " + ErrorCode(1) + " in SerialOutBlock" + CHR(13), "0", 1, 500)
       'Increase number of Errors, so that we know that this data frame was not sent correctly
       NumOfTxErrors = NumOfTxErrors + 1
     EndIf
@@ -303,6 +306,13 @@ Sub IridiumTx
   SerialClose(ComRS232)
 EndSub
 
+Sub checkForNaN(value As Float, id as Long)
+  If value = NaN Then
+    value = prevValidValue(id) 'If value exceeds (NaN) set to previous value
+    NaNCounter(id) = NaNCounter(id) + 1 'Increase counter to see how many values are NaN
+  EndIf
+EndSub
+
 'Main Program
 BeginProg
   'A USR Drive is required for the COM9602 subroutine to store some temporary files.
@@ -313,10 +323,10 @@ BeginProg
     SavedLength(i) = 0
   Next i
 
-  prefSlrW = 0 'Initialize solar value
 
   For i = 1 To NumberOfSensors Step 1
     NaNCounter(i) = 0
+    prevValidValue(i) = 0 'Initialize valid values
   Next i
 
   'Main Scan
@@ -330,7 +340,9 @@ BeginProg
     'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
     PortSet (9, 1)
     VoltSe(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
+    Call checkForNaN(AirTC, ID_AIRTC)
     VoltSe(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
+    Call checkForNaN(RH, ID_RH)
     'Trim RH value
     If RH > 100 AND RH < 103 Then RH = 100
     VaporPressure(PVap, AirTC, RH)
@@ -338,26 +350,22 @@ BeginProg
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
     VoltSe(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
     If SlrW < 0 Then SlrW = 0
-    If SlrW = NaN Then
-      SlrW = prefSlrW 'If value exceeds (NaN) set to previous value
-      NaNCounter(ID_SOLAR) = NaNCounter(ID_SOLAR) + 1 'Increase counter to see how many values are NaN
-    EndIf
+    Call checkForNaN(SlrW, ID_SOLAR)
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
-    prefSlrW = SlrW 'Store valid value
+    prevValidValue(ID_SOLAR) = SlrW 'Store valid value
     SlrW = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'WindSonic4 has a fixed frequency set to 1 Hz. See WindSensor_windsonic.pdf, page 10 / 18
-    'Get data from WindSonic4
+    'Get data from WindSonic4: WindDir, WS_ms and WSDiag are read in all at once with one call to SDI12Recorder
     SDI12Recorder(WindDir, 3, "0", "R0!", 1, 0)
-    If WindDir = NaN Then
-      Move(WS_ms, 2, WindDir, 1)
-    EndIf
-    'Set diagnostic variables as needed
-    Move(SmplsF, 8, 0, 1)
+    Call checkForNaN(WindDir, ID_WINDDIR)
+    Call checkForNaN(WS_ms, ID_WSMS)
+    Call checkForNaN(WSDiag, ID_WSDIAG)
 
     'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
     PulseCount(Rain_mm, 1, 1, 2, 0, 0.2, 0)
+    Call checkForNaN(Rain_mm, ID_RAINMM)
     If (Rain_mm > 0.19) Then
       TsinceRain = 0
     Else
@@ -365,9 +373,14 @@ BeginProg
     EndIf
 
     'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
+    '6.1.1 Performance for “Standard” Range Option
+    '600 mb to 1100 mb (hPa)
+    'See AirPressureSensor_cs100.pdf, page 6 / 16
     PortSet(2, 1)
     VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
-    BP_mbar = BP_mbar * 1
+    Call checkForNaN(BP_mbar, ID_BPMBAR)
+
+
 
     'Call Data Tables and Store Data
     CallTable SendHourly
@@ -387,8 +400,7 @@ BeginProg
       Next i
     EndIf
 
-    'Allow the modem 3 minutes for warm up before sending files.
-    If TimeIntoInterval (TimeModemOn + 3, MinutesPerDay, Min) Then
+    If TimeIntoInterval (TimeModemOn + TimeModemWarmUp, MinutesPerDay, Min) Then
       SendFiles = True
     EndIf
 
@@ -456,7 +468,14 @@ BeginProg
 
     If (CS655cntr < 1) Then
       'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
-      SDI12Recorder(CS655(), 1, "0", "M3!", 1, 0)
+      'All the values for VWC, EC, GrTemp, P, PA and VR are read in at once with one call to SDI12Recorder
+      SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
+      Call checkForNaN(VWC, ID_VWC)
+      Call checkForNaN(EC, ID_EC)
+      Call checkForNaN(GrTemp, ID_GRTEMP)
+      Call checkForNaN(P, ID_P)
+      Call checkForNaN(PA, ID_PA)
+      Call checkForNaN(VR, ID_VR)
       'Resest Counter
       CS655cntr = 2
     EndIf
