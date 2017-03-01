@@ -111,7 +111,6 @@ Const TimeTCPDisconnect = TimeTCPConnect + TCPConnectDuration
 Const MaxNumberOfFailures = 3
 
 Public TCPSocket As Long
-Dim IPBuffer As String * ReadMax
 
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
@@ -332,7 +331,7 @@ BeginProg
     If TimeIntoInterval (TimeTCPConnect, MinutesPerDay, Min) Then
       SendFiles = True
       AlreadySending = False
-      TCPSocket = TCPOpen("134.2.5.33", 2104, IPBuffer)
+      TCPSocket = TCPOpen("134.2.5.33", 2104, ReadMax)
     EndIf
 
     If TimeIntoInterval (TimeTCPDisconnect, MinutesPerDay, Min) Then
