@@ -141,7 +141,8 @@ Public PVap
 Public SlrW
 Public prevValidValue(NumberOfSensors)
 Public NaNCounter(NumberOfSensors) As Long
-Public NaNCode As Long
+'We may need NanCode later...
+'Public NaNCode As Long
 Public SlrMJ
 Public CS655(6)
 Public WSData(3)
@@ -230,7 +231,7 @@ DataTable(SaveFull, True, -1)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
   Totalize(1, Rain_mm, FP2, False)
   Average(1, BP_mbar, FP2, False)
-  Sample(1, NaNCode, Long, False)
+  Sample(1, NaNCounter(NumberOfSensors), Long, False)
 EndTable
 
 DataTable(RainHiRes, True, -1)
@@ -380,13 +381,18 @@ BeginProg
     VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
     Call checkForNaN(BP_mbar, ID_BPMBAR)
 
-
-
     'Call Data Tables and Store Data
     CallTable SendHourly
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
+
+    If TimeIntoInterval (0, MinutesPerDay, Min) Then
+      'Reset all NaN counters at 00:00h
+      For i = 1 To NumberOfSensors Step 1
+        NaNCounter(i) = 0
+      Next i
+    EndIf
 
     If TimeIntoInterval (TimeModemOn, MinutesPerDay, Min) Then
       PortSet (5, 1)
@@ -395,9 +401,6 @@ BeginProg
     If TimeIntoInterval (TimeModemOff, MinutesPerDay, Min) Then
       PortSet (5, 0)
       SendFiles = False
-      For i = 1 To NumberOfSensors Step 1
-        NaNCounter(i) = 0 'Reset solar NaN counter every day after sending data
-      Next i
     EndIf
 
     If TimeIntoInterval (TimeModemOn + TimeModemWarmUp, MinutesPerDay, Min) Then
