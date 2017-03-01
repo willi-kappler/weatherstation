@@ -410,6 +410,7 @@ BeginProg
       SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
       Call checkForNaN(VWC, ID_VWC)
       Call checkForNaN(EC, ID_EC)
+      EC = EC * 1000.0 'Convert from micro to nano
       Call checkForNaN(GrTemp, ID_GRTEMP)
       Call checkForNaN(P, ID_P)
       Call checkForNaN(PA, ID_PA)
