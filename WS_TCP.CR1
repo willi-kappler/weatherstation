@@ -115,9 +115,9 @@ Public TCPSocket As Long
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
 
-Dim SendFiles As Boolean
-Dim AlreadySending As Boolean
-Dim FileHandle, TxDataLength, NumOfTxErrors, i As Long
+Public SendFiles As Boolean
+Public AlreadySending As Boolean
+Public FileHandle, TxDataLength, NumOfTxErrors, i As Long
 Dim TxMeasureData As String * ReadMax
 
 'Save the data if an error occured. Send this data on the next day.
@@ -125,9 +125,9 @@ Dim TxMeasureData As String * ReadMax
 Dim SavedData(MaxNumberOfFailures) As String * ReadMax
 Dim SavedLength(MaxNumberOfFailures) As Long
 
-Dim tableIndex As Long
-Dim TsinceRain  As Long = 100
-Dim CS655cntr As Long
+Public tableIndex As Long
+Public TsinceRain  As Long = 100
+Public CS655cntr As Long
 
 'Declare Variables and Units
 Public BattV
