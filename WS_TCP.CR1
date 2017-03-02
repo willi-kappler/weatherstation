@@ -49,7 +49,7 @@
 'Attention!!!
 'This program is only valid for the Wanne Tübingen weather station
 'Sending data via the WLAN adapter
-
+'CR1000 OS Version 28.02
 
 StationName ("WanneTUE")
 
@@ -410,7 +410,7 @@ BeginProg
       SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
       Call checkForNaN(VWC, ID_VWC)
       Call checkForNaN(EC, ID_EC)
-      EC = EC * 1000.0 'Convert from micro to nano
+      EC = EC * 1000.0 'Convert from micro to nano (or meter to kilometer)
       Call checkForNaN(GrTemp, ID_GRTEMP)
       Call checkForNaN(P, ID_P)
       Call checkForNaN(PA, ID_PA)
