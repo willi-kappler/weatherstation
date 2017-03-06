@@ -229,7 +229,7 @@ Sub IridiumTx
   SerialIn(CIERres,ComRS232,6000,13,32)
   SplitStr (CIERstat(),CIERres,"",2,0)
 
-  'Send Message to Modem 
+  'Send Message to Modem
   SerialOut(ComRS232,"AT+SBDWT="+Left(ReadString,ReadLength)+CHR(13),"0",1,500)
   'Send Message
   SerialOut(ComRS232,"AT+SBDI"+CHR(13),13,1,100)
@@ -246,10 +246,10 @@ BeginProg
   SetStatus ("USRDriveSize",32768)
   DataDefinitionFlag(1) = False
   DataDefinitionFlag(2) = True
-  
+
   'Main Scan
   Scan(1,min,1,0)
-    
+
     'Default Datalogger Battery Voltage measurement 'BattV'
     Battery(BattV)
     'Default Wiring Panel Temperature measurement 'PTemp_C'
@@ -308,36 +308,36 @@ BeginProg
     PortSet(2,1)
     VoltSe(BP_mbar,1,mV2500,4,1,0,_50Hz,0.2,600)
     BP_mbar=BP_mbar*1
-    
+
     'Call Data Tables and Store Data
     CallTable SendHourly
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
-    
+
     For DataTableCount=1 To NumberDataTables Step 1
        If NewTableFile(DataTableCount)=True Then
           SendSbdMessage(DataTableCount)=True
           NewTableFile(DataTableCount)=False
        EndIf
-    Next DataTableCount   
+    Next DataTableCount
 
     'Activate Iridium Modems at 12:00 Daily for 15 minutes each time.
     'Allow modem warm-up time & check settings (5 minutes) & data transmissions (10 minutes)
     ' *** Use intervals that are applicable for your application ***
 
-    If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
-    If TimeIntoInterval (890,1440,Min) Then 
+    If TimeIntoInterval (870,1440,Min) Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
+    If TimeIntoInterval (890,1440,Min) Then
       PortSet (5,0)    ' Turn off modem at 14:50 every 24 hours
       SendFiles = False
     EndIf
-    
+
     'Allow the modem 3 minutes for warm up before sending files
-    If TimeIntoInterval (873,1440,min) Then 
-      SendFiles = True 
+    If TimeIntoInterval (873,1440,min) Then
+      SendFiles = True
       SendTotal = 0
     EndIf
-    
+
     If (SendFiles=True) Then
       'If a new data output exists, call a subrouting to prepare the data and tansmit it.
       For cntr2=1 To NumberDataTables Step 1
@@ -370,11 +370,11 @@ BeginProg
           ExitFor
         EndIf
       Next cntr2
-    EndIf       
-   
-    
+    EndIf
+
+
   NextScan
-    
+
   SlowSequence
   'Ground Measurements every 15 or 30 Minutes
   Scan(15,min,0,0)
@@ -384,15 +384,15 @@ BeginProg
     Else
       CS655cntr = CS655cntr - 1
     EndIf
-    
+
     If (CS655cntr < 1) Then
       'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
       SDI12Recorder(CS655(),1,"0","M3!",1,0)
       'Resest Counter
       CS655cntr = 2
     EndIf
-    
+
   NextScan
   EndSequence
-  
+
 EndProg
