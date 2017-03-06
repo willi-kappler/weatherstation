@@ -1,0 +1,173 @@
+'Test Calculation of Checksum with short string
+
+'Declare Public Variables
+Const NumberDataTables=2
+'Variables for Iridium Configuration
+
+'Require a variable for when a new DataTable file for transmission is created
+Public NewTableFile(NumberDataTables) As Boolean
+Public SendSbdMessage(NumberDataTables) As Boolean
+Public DataDefinitionFlag(NumberDataTables) As Boolean
+'Require strings for the unique file names associated with the data table files
+Public TableFileName(NumberDataTables) As String * 40
+Public HeadLen(NumberDataTables) As Long
+Public HeadCntr
+
+Public PTemp, batt_volt
+
+Public FileHandle, WriteHandle As Long
+Public ReadLength As Long
+Public LineCntr As Long
+Const ReadMax = 1024
+Public ReadString As String * ReadMax 
+Public SendString As String * ReadMax 
+Public SetupString As String * 64
+Public SendFileCntr As Long
+Public CSB1, CSB2 As Long
+Public CheckSumLong, count As Long
+Public cntr2
+
+'Message Sending Status Variables
+Public CIERres As String * 32
+Public SBDD0res As String * 32
+Public SBDIres As String * 64
+Public CIERstat(2) As Long
+Public SBDIstat(5) As Long
+Public SBDWBRes1 As String * 12
+Public SBDWBRes2 As String * 12
+Public SendTime As Long
+
+'Declare Other Variables
+'Dim Counter
+
+'Declare Constants
+
+
+'Define Data Tables.
+
+DataTable(SendStat, True, -1)
+  Sample(1,count,FP2)
+  Sample(1, ReadLength, FP2)
+  Sample(1, SetupString, String)
+  'Sample(1, CIERres, String)
+  'Sample(2, CIERstat(), Long)
+  Sample(1, SBDIres, String)
+  'Sample(5, SBDIstat(), Long)
+  Sample(1, CheckSumLong, Long)
+  Sample(1, CSB1, Long)
+  Sample(1, CSB2, Long)
+  Sample(1, SBDWBRes1, String)
+  Sample(1, SBDWBRes2, String)
+  Sample(1, SBDD0res, String)
+  Sample(1, SendTime, Long)
+  Sample(1, Left(ReadString,ReadLength), String)
+EndTable
+
+'Define Subroutines
+Sub IridiumTx
+  Timer(1,sec,2)
+  SerialOpen(ComRS232,19200,0,0,2000)
+  'Request Result of Signal Status
+  'SerialOut(ComRS232,"AT+CIER=1,0,1"+CHR(13),13,1,10)
+  'Get and process Signal Status
+  'SerialIn(CIERres,ComRS232,6000,13,32)
+  'SplitStr (CIERstat(),CIERres,"",2,0)
+  
+  'Create SetupString
+  SetupString() = 0
+  Sprintf(SetupString,"AT+SBDWB=%d%c",ReadLength,13)
+  'Calculate Checksum
+  CheckSumLong = CheckSum(Left(ReadString,ReadLength),23,ReadLength)
+  CSB1 = CheckSumLong AND &B11111111
+  CSB2 = (CheckSumLong >> 8)  AND &B11111111
+
+  'Send Message to Modem (into MO Buffer)
+  SerialOut(ComRS232,SetupString,"READY",1,100)
+  SerialOut(ComRS232,Left(ReadString,ReadLength)+CHR(CSB2)+CHR(CSB1),"",1,10)
+  SerialIn(SBDWBRes1,ComRS232,1000,"0",12)
+  SerialIn(SBDWBRes2,ComRS232,1000,-1,12)
+  'Send Message
+  'SerialOut(ComRS232,"AT+SBDI"+CHR(13),13, 1,10)
+
+  SerialOut(ComRS232,"AT+SBDTC"+CHR(13),"", 1,10)
+  SerialIn(SBDIres,ComRS232,1000,13,64)
+  'SplitStr (SBDIstat(),SBDIres,"",5,0)
+  'Check successful send
+  SerialOut(ComRS232,"AT+SBDRT"+CHR(13),"+SBDRT:", 1,1000)
+  SerialIn(SendString,ComRS232,1000,-1,ReadMax)
+  'Clear MO message buffer only needed when sending multiple messages in a row 
+  SerialOut(ComRS232,"AT+SBDD2"+CHR(13),"",2,10)
+  SerialIn(SBDD0res,ComRS232,100,13,32)
+  SerialClose(ComRS232)
+  SendTime = Timer(1,sec,1)
+EndSub
+
+'Main Program
+BeginProg
+  StationName ("PanDeAzucar")
+  SetStatus ("USRDriveSize",32768)
+  SendSbdMessage() = True
+  DataDefinitionFlag() = True
+  TableFileName(1) = "USR:SendDailyBin.dat"
+  TableFileName(2) = "USR:SendHourlyBin.dat"
+  PortSet(5,1)
+	Scan (60,Sec,0,6)
+    If (count >0) Then
+
+    For cntr2=1 To NumberDataTables Step 1
+      If SendSbdMessage(cntr2) Then
+
+	  
+        'FileCopy(TableFileName(cntr2), Replace(TableFileName(cntr2),":",":Copy"))
+        SendFileCntr += 1
+        ReadString() = 0
+        If DataDefinitionFlag(cntr2) Then
+          'Binary File has 5 Header Lines
+          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          HeadLen(cntr2) = 0
+          For HeadCntr=1 To 5 Step 1
+            ReadLength =  FileReadLine(FileHandle,ReadString,ReadMax)
+            HeadLen(cntr2) += ReadLength
+          Next HeadCntr
+          FileClose(FileHandle)
+         'CallTable ReadStat
+          
+          'Write only Header
+          FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+          ReadLength = FileRead (FileHandle,ReadString,HeadLen(cntr2))
+          FileClose(FileHandle)
+          Call (IridiumTx)
+          WriteHandle = FileOpen("USR:DataSentBin.dat","ab",-1)
+          FileWrite (WriteHandle,SendString,ReadLength)
+          FileClose (WriteHandle)
+          CallTable SendStat
+          
+          'Only Send Header on Startup
+          DataDefinitionFlag(cntr2) = False
+          ExitFor
+        EndIf
+        
+        FileHandle = FileOpen(TableFileName(cntr2),"rb",0)
+        For HeadCntr=1 To 5 Step 1
+          ReadLength =  FileReadLine(FileHandle,ReadString,ReadMax)
+        Next HeadCntr
+        FileClose(FileHandle)
+        Call (IridiumTx)
+        WriteHandle = FileOpen("USR:DataSentBin.dat","ab",-1)
+        FileWrite (WriteHandle,SendString,ReadLength)
+        FileClose (WriteHandle)
+        CallTable SendStat
+
+        SendSbdMessage(cntr2) = False
+        If (SendFileCntr > 5) Then ExitScan
+        ExitFor
+      EndIf
+    Next cntr2
+    EndIf
+    
+    count += 1
+    
+	NextScan
+	PortSet(5,0)
+EndProg
+

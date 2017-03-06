@@ -200,7 +200,7 @@ DataTable(SaveFull,True,-1) 'KU: table to be stored on local SD card
 EndTable
 
 
-DataTable(RainHiRes,True,-1) 'KU: extra rain table in high resolution in case of precipitation 
+DataTable(RainHiRes,True,-1) 'KU: extra rain table in high resolution in case of precipitation
   DataInterval(0,5,min,10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)'KU: turns off after 30 Min without rain
   CardOut(0,536870912)
@@ -229,12 +229,12 @@ Sub IridiumTx 'KU: transmit
   SerialIn(CIERres,ComRS232,6000,13,32)
   SplitStr (CIERstat(),CIERres,"",2,0)
 
-  'Send Message to Modem 
+  'Send Message to Modem
   SerialOut(ComRS232,"AT+SBDWT="+Left(ReadString,ReadLength)+CHR(13),"0",1,500)
   'KU: SBDWT: short burst data write text; ReadString = max. 160 simbols
   'Question CS course: AT command, to put data into buffer before sending?
   'Question CS course: "0": avoid waiting for "ok" as answer?
-  
+
   'Send Message
   SerialOut(ComRS232,"AT+SBDI"+CHR(13),13,1,100)
   'Check successful send
@@ -250,10 +250,10 @@ BeginProg
   SetStatus ("USRDriveSize",32768)
   DataDefinitionFlag(1) = False
   DataDefinitionFlag(2) = True
-  
+
   'Main Scan
   Scan(1,min,1,0)
-    
+
     'Default Datalogger Battery Voltage measurement 'BattV'
     Battery(BattV)
     'Default Wiring Panel Temperature measurement 'PTemp_C'
@@ -312,19 +312,19 @@ BeginProg
     PortSet(2,1)
     VoltSe(BP_mbar,1,mV2500,4,1,0,_50Hz,0.2,600)
     BP_mbar=BP_mbar*1
-    
+
     'Call Data Tables and Store Data
     CallTable SendHourly
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
-    
+
     For DataTableCount=1 To NumberDataTables Step 1
        If NewTableFile(DataTableCount)=True Then
           SendSbdMessage(DataTableCount)=True
           NewTableFile(DataTableCount)=False
        EndIf
-    Next DataTableCount   
+    Next DataTableCount
 
 'Activate Iridium Modem at 14:30 Daily for 20 minutes each time.
 'Allow modem warm-up time & check settings (3mins), then data transmission
@@ -334,18 +334,18 @@ BeginProg
 'KU: change sending time (+1 minute from round numbers) to avoid skipping of data writing due to sending at the same time
 'KU: avoid sending when battery V below 11.5 V
 
-    If TimeIntoInterval (871,1440,Min) AND BattV > 11.5 Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours     
-    If TimeIntoInterval (921,1440,Min) Then 
+    If TimeIntoInterval (871,1440,Min) AND BattV > 11.5 Then PortSet (5,1)    ' Turn on modem at 14:30 every 24 hours
+    If TimeIntoInterval (921,1440,Min) Then
       PortSet (5,0)    ' Turn off modem 50 minutes later (at 15:20) every 24 hours
       SendFiles = False
     EndIf
-    
+
     'Allow the modem 3 minutes for warm up before sending files
-    If TimeIntoInterval (874,1440,min) Then 
-      SendFiles = True 
+    If TimeIntoInterval (874,1440,min) Then
+      SendFiles = True
       SendTotal = 0
     EndIf
-    
+
     If (SendFiles=True) Then
       'If a new data output exists, call a subrouting to prepare the data and tansmit it.
       For cntr2=1 To NumberDataTables Step 1
@@ -353,7 +353,7 @@ BeginProg
           SendFileCntr += 1
           FileHandle = FileOpen(TableFileName(cntr2),"r",0)
           If DataDefinitionFlag(cntr2) Then
-            MaxSend = 4097 
+            MaxSend = 4097
             DataDefinitionFlag(cntr2) = False
           Else
             MaxSend = 1025
@@ -378,10 +378,10 @@ BeginProg
           ExitFor
         EndIf
       Next cntr2
-    EndIf       
-   
+    EndIf
+
   NextScan 'KU: programm starts from the beginning
-    
+
   SlowSequence 'KU: slow, energy intensive measurements
   'Ground Measurements every 15 or 30 Minutes
   Scan(15,min,0,0)
@@ -391,15 +391,15 @@ BeginProg
     Else
       CS655cntr = CS655cntr - 1
     EndIf
-    
+
     If (CS655cntr < 1) Then
       'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
       SDI12Recorder(CS655(),1,"0","M3!",1,0)
       'Resest Counter
       CS655cntr = 2
     EndIf
-    
+
   NextScan
   EndSequence
-  
+
 EndProg
