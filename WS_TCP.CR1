@@ -1,3 +1,24 @@
+' Script for Cambell Weather Station data transfer via Iridium model
+'
+' Copyright 2016, Professor Todd A Ehlers, Department of Geosciences,
+' University of Tuebingen, Germany
+' Contact Email:  todd.ehlers@uni-tuebingen.de
+'
+' This program is free for use for academic, non-profit use.  Commercial use, or
+' redistribution of the program is not allowed.  Interested persons should
+' contact Todd Ehlers for redistribution or sharing of this program.
+'
+' No guarantee of functionality is provided.  Use at your own risk.  Todd Ehlers
+' and the Univeristy of Tuebingen assume no reposibility for the proper functioning
+' of this software.
+'
+' Note:  this program sends the data in binary for reduced file size.
+'
+' Last update:  06 March, 2017
+'
+' Programmer. W. Kappler, Uni. Tuebingen
+'
+'
 '+W/O:  CCSG002220
 '-Wiring For CR1000-
 '
@@ -48,7 +69,7 @@
 
 'Attention!!!
 'This program is only valid for the Wanne Tübingen weather station
-'Sending data via the WLAN adapter
+'Sending data via the WLAN adapter (TCP connection, directly to the server)
 'CR1000 OS Version 28.02
 
 StationName ("WanneTUE")
