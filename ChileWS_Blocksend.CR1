@@ -67,6 +67,8 @@
 '
 StationName ("WanneTUE")
 
+Const SiteElevation = 341.0 'This is the elevation for Tübingen
+
 Const MaxNumberOfRecords = 100000
 
 Const NumberDataTables = 2
@@ -95,7 +97,6 @@ Const ReadMax = 1960
 '1440 = 24 hours a day * 60 minutes per hour
 Const MinutesPerHour = 60
 Const MinutesPerDay = 24 * MinutesPerHour
-
 
 '5 means TOB1, binary file without header but with time stamp
 'See Datalogger_cr1000.pdf, Page 378
@@ -149,9 +150,9 @@ Public ErrorCode(6) As Long
 Dim SavedData(MaxNumberOfFailures) As String * ReadMax
 Dim SavedLength(MaxNumberOfFailures) As Long
 
-Dim tableIndex As Long
-Dim TsinceRain  As Long = 100
-Dim CS655cntr As Long
+Public tableIndex As Long
+Public TsinceRain  As Long = 100
+Public CS655cntr As Long
 
 'Declare Variables and Units
 Public BattV
@@ -168,9 +169,9 @@ Public SlrMJ
 Public CS655(6)
 Public WSData(3)
 Public Rain_mm
-'Public R_I_Hr
-'Public R_I_C
 Public BP_mbar
+Public VaporPres
+Public SeaLevelPres
 
 Alias CS655(1) = VWC
 Alias CS655(2) = EC
@@ -248,11 +249,14 @@ DataTable(SaveFull, True, -1)
   Minimum(1, WS_ms, FP2, False, False)
   FieldNames("WS_ms_min"
   Average(1, WindDir, FP2, False)
-  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 1)
+  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 0)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
   Totalize(1, Rain_mm, FP2, False)
   Average(1, BP_mbar, FP2, False)
-  Sample(1, NaNCounter(NumberOfSensors), Long, False)
+  Sample(1, NaNCounter, Long, False)
+  Sample(1, WSDiag, FP2)
+  Sample(1, VaporPres, FP2)
+  Sample(1, SeaLevelPres, FP2)
 EndTable
 
 DataTable(RainHiRes, True, -1)
@@ -332,6 +336,8 @@ Sub checkForNaN(value As Float, id as Long)
   If value = NaN Then
     value = prevValidValue(id) 'If value exceeds (NaN) set to previous value
     NaNCounter(id) = NaNCounter(id) + 1 'Increase counter to see how many values are NaN
+  Else
+    prevValidValue(id) = value
   EndIf
 EndSub
 
@@ -344,7 +350,6 @@ BeginProg
   For i = 1 To MaxNumberOfFailures Step 1
     SavedLength(i) = 0
   Next i
-
 
   For i = 1 To NumberOfSensors Step 1
     NaNCounter(i) = 0
@@ -374,7 +379,6 @@ BeginProg
     If SlrW < 0 Then SlrW = 0
     Call checkForNaN(SlrW, ID_SOLAR)
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
-    prevValidValue(ID_SOLAR) = SlrW 'Store valid value
     SlrW = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
@@ -402,6 +406,9 @@ BeginProg
     VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
     Call checkForNaN(BP_mbar, ID_BPMBAR)
 
+    VaporPressure(VaporPres, AirTC, RH)
+    SeaLevelPres = BP_mbar + (1013.25 * (1 - ((1 - (SiteElevation / 44307.69231))^5.25328)))
+
     'Call Data Tables and Store Data
     CallTable SendHourly
     CallTable SendDaily
@@ -422,13 +429,16 @@ BeginProg
     If TimeIntoInterval (TimeModemOff, MinutesPerDay, Min) Then
       PortSet (5, 0)
       SendFiles = False
+      AlreadySending = False
     EndIf
 
     If TimeIntoInterval (TimeModemOn + TimeModemWarmUp, MinutesPerDay, Min) Then
       SendFiles = True
+      AlreadySending = False
     EndIf
 
-    If SendFiles Then
+    If SendFiles AND (NOT AlreadySending) Then
+      AlreadySending = True
       'Are there some leftovers of the previous day ?
       'If yes try to send it now if the battery has enough power
       For i = 1 To MaxNumberOfFailures Step 1
@@ -475,6 +485,7 @@ BeginProg
       Next tableIndex
 
       SendFiles = False
+      AlreadySending = False
       PortSet (5, 0)
     EndIf
 
@@ -496,6 +507,7 @@ BeginProg
       SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
       Call checkForNaN(VWC, ID_VWC)
       Call checkForNaN(EC, ID_EC)
+      EC = EC * 1000.0 'Convert from micro to nano (or meter to kilometer)
       Call checkForNaN(GrTemp, ID_GRTEMP)
       Call checkForNaN(P, ID_P)
       Call checkForNaN(PA, ID_PA)

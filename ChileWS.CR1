@@ -193,7 +193,7 @@ DataTable(SaveFull,True,-1) 'KU: table to be stored on local SD card
   Minimum(1,WS_ms,FP2,False,False)
   FieldNames("WS_ms_min"
   Average(1,WindDir,FP2,False)
-  WindVector(1,WS_ms,WindDir,FP2,False,0,0,1)
+  WindVector(1,WS_ms,WindDir,FP2,False,0,0,0)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
   Totalize(1,Rain_mm,FP2,False)
   Average(1,BP_mbar,FP2,False)

@@ -74,6 +74,8 @@
 
 StationName ("WanneTUE")
 
+Const SiteElevation = 341.0 'This is the elevation for Tübingen
+
 Const MaxNumberOfRecords = 100000
 
 Const NumberDataTables = 2
@@ -131,7 +133,7 @@ Const TimeTCPDisconnect = TimeTCPConnect + TCPConnectDuration
 'Number of days to store data of failed transmission
 Const MaxNumberOfFailures = 3
 
-Public TCPSocket As Long
+Public TxCounter As Long
 
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
@@ -166,6 +168,8 @@ Public CS655(6)
 Public WSData(3)
 Public Rain_mm
 Public BP_mbar
+Public VaporPres
+Public SeaLevelPres
 
 Alias CS655(1) = VWC
 Alias CS655(2) = EC
@@ -243,11 +247,14 @@ DataTable(SaveFull, True, -1)
   Minimum(1, WS_ms, FP2, False, False)
   FieldNames("WS_ms_min"
   Average(1, WindDir, FP2, False)
-  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 1)
+  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 0)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
   Totalize(1, Rain_mm, FP2, False)
   Average(1, BP_mbar, FP2, False)
   Sample(1, NaNCounter, Long, False)
+  Sample(1, WSDiag, FP2)
+  Sample(1, VaporPres, FP2)
+  Sample(1, SeaLevelPres, FP2)
 EndTable
 
 DataTable(RainHiRes, True, -1)
@@ -260,7 +267,8 @@ DataTable(RainHiRes, True, -1)
 EndTable
 
 Sub TCPTx
-  SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
+  SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
+  TxCounter = TxCounter + 1
 EndSub
 
 Sub checkForNaN(value As Float, id as Long)
@@ -337,6 +345,9 @@ BeginProg
     VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
     Call checkForNaN(BP_mbar, ID_BPMBAR)
 
+    VaporPressure(VaporPres, AirTC, RH)
+    SeaLevelPres = BP_mbar + (1013.25 * (1 - ((1 - (SiteElevation / 44307.69231))^5.25328)))
+
     'Call Data Tables and Store Data
     CallTable SendHourly
     CallTable SendDaily
@@ -353,13 +364,11 @@ BeginProg
     If TimeIntoInterval (TimeTCPConnect, MinutesPerDay, Min) Then
       SendFiles = True
       AlreadySending = False
-      TCPSocket = TCPOpen("134.2.5.33", 2104, ReadMax)
     EndIf
 
     If TimeIntoInterval (TimeTCPDisconnect, MinutesPerDay, Min) Then
       SendFiles = False
       AlreadySending = False
-      TCPClose(TCPSocket)
     EndIf
 
     If SendFiles AND (NOT AlreadySending) Then
