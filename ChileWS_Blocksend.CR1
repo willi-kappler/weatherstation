@@ -65,9 +65,15 @@
 '    12V:  Red
 '    C5:  Yellow
 '
-StationName ("WanneTUE")
+StationName ("PanDeAzucar")
+'StationName ("SantaGracia")
+'StationName ("LaCampana")
+'StationName ("Nahuelbuta")
 
-Const SiteElevation = 341.0 'This is the elevation for Tübingen
+Const SiteElevation = 320.0 'This is the elevation for Pan de Azucar
+'SG: 579
+'LC: 412
+'Na: 1234
 
 Const MaxNumberOfRecords = 100000
 
