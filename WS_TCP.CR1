@@ -126,6 +126,7 @@ Const MinuteTCPConnect = 20
 Const TimeTCPConnect = (HourTCPConnect * 60) + MinuteTCPConnect
 
 Const TCPConnectDuration = 50
+Public TCPSocket As Long
 
 'Close TCP connection at 13:10 every 24 hours
 Const TimeTCPDisconnect = TimeTCPConnect + TCPConnectDuration
@@ -267,7 +268,8 @@ DataTable(RainHiRes, True, -1)
 EndTable
 
 Sub TCPTx
-  SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
+  'SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
+  SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
   TxCounter = TxCounter + 1
 EndSub
 
@@ -362,11 +364,13 @@ BeginProg
     EndIf
 
     If TimeIntoInterval (TimeTCPConnect, MinutesPerDay, Min) Then
+      TCPSocket = TCPOpen("134.2.5.33", 2104, 1500)
       SendFiles = True
       AlreadySending = False
     EndIf
 
     If TimeIntoInterval (TimeTCPDisconnect, MinutesPerDay, Min) Then
+      TCPClose(TCPSocket)
       SendFiles = False
       AlreadySending = False
     EndIf
