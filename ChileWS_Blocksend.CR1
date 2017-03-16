@@ -75,7 +75,7 @@ Const SiteElevation = 320.0 'This is the elevation for Pan de Azucar
 'LC: 412
 'Na: 1234
 
-Const MaxNumberOfRecords = 100000
+Const MaxNumberOfRecords = 300000
 
 Const NumberDataTables = 2
 

@@ -76,7 +76,7 @@ StationName ("WanneTUE")
 
 Const SiteElevation = 341.0 'This is the elevation for Tübingen
 
-Const MaxNumberOfRecords = 100000
+Const MaxNumberOfRecords = 300000
 
 Const NumberDataTables = 2
 
