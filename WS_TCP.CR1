@@ -82,20 +82,20 @@ Const NumberDataTables = 2
 
 'NaN counter constants for sensors
 Const NumberOfSensors = 14
-Const ID_AIRTC = 1
-Const ID_RH = 2
-Const ID_SOLAR = 3
-Const ID_WINDDIR = 4
-Const ID_WSMS = 5
-Const ID_WSDIAG = 6
-Const ID_RAINMM = 7
-Const ID_BPMBAR = 8
-Const ID_VWC = 9
-Const ID_EC = 10
-Const ID_GRTEMP = 11
-Const ID_P = 12
-Const ID_PA = 13
-Const ID_VR = 14
+Const ID_AIRTC        = 1
+Const ID_RH           = 2
+Const ID_SOLAR        = 3
+Const ID_WINDDIR      = 4
+Const ID_WSMS         = 5
+Const ID_WSDIAG       = 6
+Const ID_RAINMM       = 7
+Const ID_BPMBAR       = 8
+Const ID_VWC          = 9
+Const ID_EC           = 10
+Const ID_GRTEMP       = 11
+Const ID_P            = 12
+Const ID_PA           = 13
+Const ID_VR           = 14
 
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
@@ -121,11 +121,11 @@ Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
 'Time values (hour and minute) for TCP connect / disconnect
 
 'Open TCP connection at 12:20 every 24 hours
-Const HourTCPConnect = 12
-Const MinuteTCPConnect = 20
-Const TimeTCPConnect = (HourTCPConnect * 60) + MinuteTCPConnect
-
+Const HourTCPConnect     = 12
+Const MinuteTCPConnect   = 20
+Const TimeTCPConnect     = (HourTCPConnect * 60) + MinuteTCPConnect
 Const TCPConnectDuration = 50
+
 Public TCPSocket As Long
 
 'Close TCP connection at 13:10 every 24 hours
@@ -172,34 +172,34 @@ Public BP_mbar
 Public VaporPres
 Public SeaLevelPres
 
-Alias CS655(1) = VWC
-Alias CS655(2) = EC
-Alias CS655(3) = GrTemp
-Alias CS655(4) = P
-Alias CS655(5) = PA
-Alias CS655(6) = VR
+Alias CS655(1)  = VWC
+Alias CS655(2)  = EC
+Alias CS655(3)  = GrTemp
+Alias CS655(4)  = P
+Alias CS655(5)  = PA
+Alias CS655(6)  = VR
 Alias WSData(1) = WindDir
 Alias WSData(2) = WS_ms
 Alias WSData(3) = WSDiag
 
-Units BattV=Volts
-Units PTemp_C=Deg C
-Units AirTC=Deg C
-Units RH=%
-Units PVap=kPa
-Units SlrW=W/m²
-Units SlrMJ=MJ/m²
-Units Rain_mm=mm
-Units BP_mbar=mbar
-Units VWC=m³/m³
-Units EC=dS/m
-Units GrTemp=Deg C
-Units P=unitless
-Units PA=nSec
-Units VR=unitless
-Units WindDir=degrees
-Units WS_ms=meters/second
-Units WSDiag=unitless
+Units BattV   = Volts
+Units PTemp_C = Deg C
+Units AirTC   = Deg C
+Units RH      = %
+Units PVap    = kPa
+Units SlrW    = W/m²
+Units SlrMJ   = MJ/m²
+Units Rain_mm = mm
+Units BP_mbar = mbar
+Units VWC     = m³/m³
+Units EC      = dS/m
+Units GrTemp  = Deg C
+Units P       = unitless
+Units PA      = nSec
+Units VR      = unitless
+Units WindDir = degrees
+Units WS_ms   = meters/second
+Units WSDiag  = unitless
 
 'Define Data Tables
 DataTable(SendHourly, True, -1)
@@ -275,7 +275,7 @@ EndSub
 
 Sub checkForNaN(value As Float, id as Long)
   If value = NaN Then
-    value = prevValidValue(id) 'If value exceeds (NaN) set to previous value
+    value          = prevValidValue(id) 'If value exceeds (NaN) set to previous value
     NaNCounter(id) = NaNCounter(id) + 1 'Increase counter to see how many values are NaN
   Else
     prevValidValue(id) = value
@@ -293,7 +293,7 @@ BeginProg
   Next i
 
   For i = 1 To NumberOfSensors Step 1
-    NaNCounter(i) = 0
+    NaNCounter(i)     = 0
     prevValidValue(i) = 0 'Initialize valid values
   Next i
 
@@ -320,7 +320,7 @@ BeginProg
     If SlrW < 0 Then SlrW = 0
     Call checkForNaN(SlrW, ID_SOLAR)
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
-    SlrW = SlrW * 5.0  'Convert mV to W/m²
+    SlrW  = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'WindSonic4 has a fixed frequency set to 1 Hz. See WindSensor_windsonic.pdf, page 10 / 18
@@ -364,14 +364,14 @@ BeginProg
     EndIf
 
     If TimeIntoInterval (TimeTCPConnect, MinutesPerDay, Min) Then
-      TCPSocket = TCPOpen("134.2.5.33", 2104, 1500)
-      SendFiles = True
+      TCPSocket      = TCPOpen("134.2.5.33", 2104, 1500)
+      SendFiles      = True
       AlreadySending = False
     EndIf
 
     If TimeIntoInterval (TimeTCPDisconnect, MinutesPerDay, Min) Then
       TCPClose(TCPSocket)
-      SendFiles = False
+      SendFiles      = False
       AlreadySending = False
     EndIf
 
@@ -382,8 +382,7 @@ BeginProg
       For i = 1 To MaxNumberOfFailures Step 1
         If SavedLength(i) > 0 AND BattV >= 11.5 Then
           TxMeasureData = SavedData(i)
-          TxDataLength = SavedLength(i)
-
+          TxDataLength  = SavedLength(i)
           NumOfTxErrors = 0
 
           Call TCPTx()
@@ -410,7 +409,7 @@ BeginProg
             For i = 1 To MaxNumberOfFailures Step 1
               'Search for an empty (unused) slot
               If SavedLength(i) = 0 Then
-                SavedData(i) = TxMeasureData
+                SavedData(i)   = TxMeasureData
                 SavedLength(i) = TxDataLength
                 ExitFor
               EndIf
@@ -422,7 +421,7 @@ BeginProg
         FileClose(FileHandle)
       Next tableIndex
 
-      SendFiles = False
+      SendFiles      = False
       AlreadySending = False
     EndIf
 
