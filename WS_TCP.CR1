@@ -269,7 +269,7 @@ Sub TCPTx
     'An error occured
     NumOfTxErrors = NumOfTxErrors + 1
   Else
-    SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
+    SerialOutBlock(TCPSocket, CHR(2) & CHR(0) & CHR(0) & TxMeasureData, TxDataLength + 3)
     TxCounter = TxCounter + 1
   EndIf
 EndSub
