@@ -74,11 +74,11 @@
 
 StationName ("WanneTUE")
 
-Const SiteElevation = 341.0 'This is the elevation for Tübingen
+Const SiteElevation      = 341.0 'This is the elevation for Tübingen
 
 Const MaxNumberOfRecords = 300000
 
-Const NumberDataTables = 2
+Const NumberDataTables   = 2
 
 'NaN counter constants for sensors
 Const NumberOfSensors = 14
@@ -103,7 +103,7 @@ Const ReadMax = 1960
 
 '1440 = 24 hours a day * 60 minutes per hour
 Const MinutesPerHour = 60
-Const MinutesPerDay = 24 * MinutesPerHour
+Const MinutesPerDay  = 24 * MinutesPerHour
 
 '5 means TOB1, binary file without header but with time stamp
 'See Datalogger_cr1000.pdf, Page 378
@@ -114,7 +114,7 @@ Const TableMaxFiles = 0
 
 'Write data table to CF card every day at 12:10h
 'Thus we have at least one data record (at 12:00h) that will be send at 12:20h
-Const HourTableWrite = 12
+Const HourTableWrite   = 12
 Const MinuteTableWrite = 10
 Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
 
@@ -124,12 +124,7 @@ Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
 Const HourTCPConnect     = 12
 Const MinuteTCPConnect   = 20
 Const TimeTCPConnect     = (HourTCPConnect * 60) + MinuteTCPConnect
-Const TCPConnectDuration = 50
-
 Public TCPSocket As Long
-
-'Close TCP connection at 13:10 every 24 hours
-Const TimeTCPDisconnect = TimeTCPConnect + TCPConnectDuration
 
 'Number of days to store data of failed transmission
 Const MaxNumberOfFailures = 3
@@ -205,72 +200,78 @@ Units WSDiag  = unitless
 DataTable(SendHourly, True, -1)
   DataInterval(0, MinutesPerHour, min, 10)
   TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
-  Average(1, AirTC, FP2, False)
-  Sample(1, RH, FP2)
-  Average(1, SlrW, FP2, False)
-  Average(1, VWC, FP2, False)
-  Average(1, GrTemp, FP2, False)
-  Average(1, WS_ms, FP2, False)
-  Maximum(1, WS_ms, FP2, False, False)
+  Average(1,  AirTC,   FP2, False)
+  Sample(1,   RH,      FP2)
+  Average(1,  SlrW,    FP2, False)
+  Average(1,  VWC,     FP2, False)
+  Average(1,  GrTemp,  FP2, False)
+  Average(1,  WS_ms,   FP2, False)
+  Maximum(1,  WS_ms,   FP2, False, False)
   FieldNames("WS_ms_max")
-  Average(1, WindDir, FP2, False)
+  Average(1,  WindDir, FP2, False)
   Totalize(1, Rain_mm, FP2, False)
-  Average(1, BP_mbar, FP2, False)
+  Average(1,  BP_mbar, FP2, False)
 EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
   TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
-  Minimum(1, BattV, FP2, False, False)
+  Minimum(1, BattV,  FP2, False, False)
   Sample(1, Status.LithiumBattery, FP2)
-  Sample(1, WSDiag, FP2)
+  Sample(1,  WSDiag, FP2)
 EndTable
 
 DataTable(SaveFull, True, -1)
   DataInterval(0, 30, min, 10)
   CardOut(0, MaxNumberOfRecords)
-  Average(1, BattV, FP2, False)
-  Average(1, PTemp_C, FP2, False)
-  Average(1, AirTC, FP2, False)
-  Sample(1, RH, FP2)
-  Average(1, PVap, FP2, False)
-  Average(1, SlrW, FP2, False)
-  Totalize(1, SlrMJ, IEEE4, False)
-  Average(1, VWC, FP2, False)
-  Average(1, GrTemp, FP2, False)
-  Average(1, EC, FP2, False)
-  Average(1, P, FP2, False)
-  Average(1, PA, FP2, False)
-  Average(1, VR, FP2, False)
-  Average(1, WS_ms, FP2, False)
-  Maximum(1, WS_ms, FP2, False, False)
+  Average(1,    BattV,          FP2,   False)
+  Average(1,    PTemp_C,        FP2,   False)
+  Average(1,    AirTC,          FP2,   False)
+  Sample(1,     RH,             FP2)
+  Average(1,    PVap,           FP2,   False)
+  Average(1,    SlrW,           FP2,   False)
+  Totalize(1,   SlrMJ,          IEEE4, False)
+  Average(1,    VWC,            FP2,   False)
+  Average(1,    GrTemp,         FP2,   False)
+  Average(1,    EC,             FP2,   False)
+  Average(1,    P,              FP2,   False)
+  Average(1,    PA,             FP2,   False)
+  Average(1,    VR,             FP2,   False)
+  Average(1,    WS_ms,          FP2,   False)
+  Maximum(1,    WS_ms,          FP2,   False, False)
   FieldNames("WS_ms_max")
-  Minimum(1, WS_ms, FP2, False, False)
+  Minimum(1,    WS_ms,          FP2,   False, False)
   FieldNames("WS_ms_min"
-  Average(1, WindDir, FP2, False)
-  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 0)
+  Average(1,    WindDir,        FP2,   False)
+  WindVector(1, WS_ms, WindDir, FP2,   False, 0, 0, 0)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
-  Totalize(1, Rain_mm, FP2, False)
-  Average(1, BP_mbar, FP2, False)
-  Sample(1, NaNCounter, Long, False)
-  Sample(1, WSDiag, FP2)
-  Sample(1, VaporPres, FP2)
-  Sample(1, SeaLevelPres, FP2)
+  Totalize(1,   Rain_mm,        FP2,   False)
+  Average(1,    BP_mbar,        FP2,   False)
+  Sample(1,     NaNCounter,     Long,  False)
+  Sample(1,     WSDiag,         FP2)
+  Sample(1,     VaporPres,      FP2)
+  Sample(1,     SeaLevelPres,   FP2)
 EndTable
 
 DataTable(RainHiRes, True, -1)
   DataInterval(0, 5, min, 10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
-  CardOut(0, MaxNumberOfRecords)
-  Totalize(1, Rain_mm, FP2, False)
-  Sample(1, VWC, FP2
-  Sample(1, GrTemp, FP2)
+  CardOut(0,   MaxNumberOfRecords)
+  Totalize(1,  Rain_mm, FP2, False)
+  Sample(1,    VWC,     FP2
+  Sample(1,    GrTemp,  FP2)
 EndTable
 
 Sub TCPTx
   'SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
-  SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
-  TxCounter = TxCounter + 1
+
+  If TCPSocket = 0 Then
+    'An error occured
+    NumOfTxErrors = NumOfTxErrors + 1
+  Else
+    SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
+    TxCounter = TxCounter + 1
+  EndIf
 EndSub
 
 Sub checkForNaN(value As Float, id as Long)
@@ -369,12 +370,6 @@ BeginProg
       AlreadySending = False
     EndIf
 
-    If TimeIntoInterval (TimeTCPDisconnect, MinutesPerDay, Min) Then
-      TCPClose(TCPSocket)
-      SendFiles      = False
-      AlreadySending = False
-    EndIf
-
     If SendFiles AND (NOT AlreadySending) Then
       AlreadySending = True
       'Are there some leftovers of the previous day ?
@@ -421,6 +416,7 @@ BeginProg
         FileClose(FileHandle)
       Next tableIndex
 
+      TCPClose(TCPSocket)
       SendFiles      = False
       AlreadySending = False
     EndIf
