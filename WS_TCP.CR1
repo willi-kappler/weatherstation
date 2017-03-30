@@ -264,14 +264,17 @@ EndTable
 
 Sub TCPTx
   'SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
+  TCPSocket = TCPOpen("134.2.5.33", 2104, 1500)
 
   If TCPSocket = 0 Then
     'An error occured
     NumOfTxErrors = NumOfTxErrors + 1
   Else
-    SerialOutBlock(TCPSocket, CHR(2) & CHR(0) & CHR(0) & TxMeasureData, TxDataLength + 3)
+    SerialOutBlock(TCPSocket, CHR(2) & CHR(0) & CHR(0), 3)
+    SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
     TxCounter = TxCounter + 1
   EndIf
+  TCPClose(TCPSocket)
 EndSub
 
 Sub checkForNaN(value As Float, id as Long)
@@ -365,7 +368,6 @@ BeginProg
     EndIf
 
     If TimeIntoInterval (TimeTCPConnect, MinutesPerDay, Min) Then
-      TCPSocket      = TCPOpen("134.2.5.33", 2104, 1500)
       SendFiles      = True
       AlreadySending = False
     EndIf
@@ -416,7 +418,6 @@ BeginProg
         FileClose(FileHandle)
       Next tableIndex
 
-      TCPClose(TCPSocket)
       SendFiles      = False
       AlreadySending = False
     EndIf
