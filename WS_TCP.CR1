@@ -124,7 +124,13 @@ Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
 Const HourTCPConnect     = 12
 Const MinuteTCPConnect   = 20
 Const TimeTCPConnect     = (HourTCPConnect * 60) + MinuteTCPConnect
+Const TCPPort = 2104
+Const TCPBuffer = 1500
+Const TCPOpenTimeOut = 1000 '10 seconds
+Const TCPReadTimeOut = 200  '2 seconds
 Public TCPSocket As Long
+Const BufferSize = 10
+Public Buffer As String * BufferSize
 
 'Number of days to store data of failed transmission
 Const MaxNumberOfFailures = 3
@@ -264,20 +270,25 @@ EndTable
 
 Sub TCPTx
   'SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
-  TCPSocket = TCPOpen("134.2.5.33", 2104, 1500)
 
+  TCPSocket = TCPOpen("134.2.5.33", TCPPort, TCPBuffer, TCPOpenTimeOut)
   If TCPSocket = 0 Then
-    'An error occured
+    'An error occured: conncection to server could not be established
     NumOfTxErrors = NumOfTxErrors + 1
   Else
-    SerialOutBlock(TCPSocket, CHR(2) & CHR(0) & CHR(0), 3)
+    'Send header first
+    SerialOutBlock(TCPSocket, "12345678901234567890", 20)
+    SerialOutBlock(TCPSocket, "12345678901234567890", 20)
+    SerialOutBlock(TCPSocket, "12345678" & CHR(2) & CHR(0) & CHR(0), 11)
+    'Now send the actual data
     SerialOutBlock(TCPSocket, TxMeasureData, TxDataLength)
+    SerialIn(Buffer, TCPSocket, TCPReadTimeOut, 0, BufferSize)
+    TCPClose(TCPSocket)
     TxCounter = TxCounter + 1
   EndIf
-  TCPClose(TCPSocket)
 EndSub
 
-Sub checkForNaN(value As Float, id as Long)
+Sub checkForNaN(value As Float, id As Long)
   If value = NaN Then
     value          = prevValidValue(id) 'If value exceeds (NaN) set to previous value
     NaNCounter(id) = NaNCounter(id) + 1 'Increase counter to see how many values are NaN
@@ -311,16 +322,16 @@ BeginProg
 
     'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
     PortSet (9, 1)
-    VoltSe(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
+    VoltSE(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
     Call checkForNaN(AirTC, ID_AIRTC)
-    VoltSe(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
+    VoltSE(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
     Call checkForNaN(RH, ID_RH)
     'Trim RH value
     If RH > 100 AND RH < 103 Then RH = 100
     VaporPressure(PVap, AirTC, RH)
 
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
-    VoltSe(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
+    VoltSE(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
     If SlrW < 0 Then SlrW = 0
     Call checkForNaN(SlrW, ID_SOLAR)
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
@@ -348,7 +359,7 @@ BeginProg
     '600 mb to 1100 mb (hPa)
     'See AirPressureSensor_cs100.pdf, page 6 / 16
     PortSet(2, 1)
-    VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
+    VoltSE(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
     Call checkForNaN(BP_mbar, ID_BPMBAR)
 
     VaporPressure(VaporPres, AirTC, RH)
