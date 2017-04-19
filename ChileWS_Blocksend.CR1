@@ -372,16 +372,16 @@ BeginProg
 
     'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
     PortSet (9, 1)
-    VoltSe(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
+    VoltSE(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
     Call checkForNaN(AirTC, ID_AIRTC)
-    VoltSe(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
+    VoltSE(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
     Call checkForNaN(RH, ID_RH)
     'Trim RH value
     If RH > 100 AND RH < 103 Then RH = 100
     VaporPressure(PVap, AirTC, RH)
 
     'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
-    VoltSe(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
+    VoltSE(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
     If SlrW < 0 Then SlrW = 0
     Call checkForNaN(SlrW, ID_SOLAR)
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
@@ -409,7 +409,7 @@ BeginProg
     '600 mb to 1100 mb (hPa)
     'See AirPressureSensor_cs100.pdf, page 6 / 16
     PortSet(2, 1)
-    VoltSe(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
+    VoltSE(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
     Call checkForNaN(BP_mbar, ID_BPMBAR)
 
     VaporPressure(VaporPres, AirTC, RH)
