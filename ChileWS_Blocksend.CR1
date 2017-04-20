@@ -71,6 +71,7 @@ StationName ("PanDeAzucar")
 'StationName ("Nahuelbuta")
 
 Const SiteElevation = 320.0 'This is the elevation for Pan de Azucar
+'PdA: 320.0
 'SG: 579
 'LC: 412
 'Na: 1234
@@ -81,20 +82,20 @@ Const NumberDataTables = 2
 
 'NaN counter constants for sensors
 Const NumberOfSensors = 14
-Const ID_AIRTC = 1
-Const ID_RH = 2
-Const ID_SOLAR = 3
-Const ID_WINDDIR = 4
-Const ID_WSMS = 5
-Const ID_WSDIAG = 6
-Const ID_RAINMM = 7
-Const ID_BPMBAR = 8
-Const ID_VWC = 9
-Const ID_EC = 10
-Const ID_GRTEMP = 11
-Const ID_P = 12
-Const ID_PA = 13
-Const ID_VR = 14
+Const ID_AIRTC        = 1
+Const ID_RH           = 2
+Const ID_SOLAR        = 3
+Const ID_WINDDIR      = 4
+Const ID_WSMS         = 5
+Const ID_WSDIAG       = 6
+Const ID_RAINMM       = 7
+Const ID_BPMBAR       = 8
+Const ID_VWC          = 9
+Const ID_EC           = 10
+Const ID_GRTEMP       = 11
+Const ID_P            = 12
+Const ID_PA           = 13
+Const ID_VR           = 14
 
 'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
 'Page 11: "9522B: 1960 Bytes"
@@ -179,12 +180,12 @@ Public BP_mbar
 Public VaporPres
 Public SeaLevelPres
 
-Alias CS655(1) = VWC
-Alias CS655(2) = EC
-Alias CS655(3) = GrTemp
-Alias CS655(4) = P
-Alias CS655(5) = PA
-Alias CS655(6) = VR
+Alias CS655(1)  = VWC
+Alias CS655(2)  = EC
+Alias CS655(3)  = GrTemp
+Alias CS655(4)  = P
+Alias CS655(5)  = PA
+Alias CS655(6)  = VR
 Alias WSData(1) = WindDir
 Alias WSData(2) = WS_ms
 Alias WSData(3) = WSDiag
@@ -212,66 +213,66 @@ Units WSDiag=unitless
 DataTable(SendHourly, True, -1)
   DataInterval(0, MinutesPerHour, min, 10)
   TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
-  Average(1, AirTC, FP2, False)
-  Sample(1, RH, FP2)
-  Average(1, SlrW, FP2, False)
-  Average(1, VWC, FP2, False)
-  Average(1, GrTemp, FP2, False)
-  Average(1, WS_ms, FP2, False)
-  Maximum(1, WS_ms, FP2, False, False)
+  Average(1,  AirTC,   FP2, False)
+  Sample(1,   RH,      FP2)
+  Average(1,  SlrW,    FP2, False)
+  Average(1,  VWC,     FP2, False)
+  Average(1,  GrTemp,  FP2, False)
+  Average(1,  WS_ms,   FP2, False)
+  Maximum(1,  WS_ms,   FP2, False, False)
   FieldNames("WS_ms_max")
-  Average(1, WindDir, FP2, False)
+  Average(1,  WindDir, FP2, False)
   Totalize(1, Rain_mm, FP2, False)
-  Average(1, BP_mbar, FP2, False)
+  Average(1,  BP_mbar, FP2, False)
 EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
   TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
-  Minimum(1, BattV, FP2, False, False)
-  Sample(1, Status.LithiumBattery, FP2)
-  Sample(1, WSDiag, FP2)
+  Minimum(1, BattV,                 FP2, False, False)
+  Sample(1,  Status.LithiumBattery, FP2)
+  Sample(1,  WSDiag,                FP2)
 EndTable
 
 DataTable(SaveFull, True, -1)
   DataInterval(0, 30, min, 10)
-  CardOut(0, MaxNumberOfRecords)
-  Average(1, BattV, FP2, False)
-  Average(1, PTemp_C, FP2, False)
-  Average(1, AirTC, FP2, False)
-  Sample(1, RH, FP2)
-  Average(1, PVap, FP2, False)
-  Average(1, SlrW, FP2, False)
-  Totalize(1, SlrMJ, IEEE4, False)
-  Average(1, VWC, FP2, False)
-  Average(1, GrTemp, FP2, False)
-  Average(1, EC, FP2, False)
-  Average(1, P, FP2, False)
-  Average(1, PA, FP2, False)
-  Average(1, VR, FP2, False)
-  Average(1, WS_ms, FP2, False)
-  Maximum(1, WS_ms, FP2, False, False)
+  CardOut(0,    MaxNumberOfRecords)
+  Average(1,    BattV,          FP2,   False)
+  Average(1,    PTemp_C,        FP2,   False)
+  Average(1,    AirTC,          FP2,   False)
+  Sample(1,     RH,             FP2)
+  Average(1,    PVap,           FP2,   False)
+  Average(1,    SlrW,           FP2,   False)
+  Totalize(1,   SlrMJ,          IEEE4, False)
+  Average(1,    VWC,            FP2,   False)
+  Average(1,    GrTemp,         FP2,   False)
+  Average(1,    EC,             FP2,   False)
+  Average(1,    P,              FP2,   False)
+  Average(1,    PA,             FP2,   False)
+  Average(1,    VR,             FP2,   False)
+  Average(1,    WS_ms,          FP2,   False)
+  Maximum(1,    WS_ms,          FP2,   False, False)
   FieldNames("WS_ms_max")
-  Minimum(1, WS_ms, FP2, False, False)
+  Minimum(1,    WS_ms,          FP2,   False, False)
   FieldNames("WS_ms_min"
-  Average(1, WindDir, FP2, False)
-  WindVector(1, WS_ms, WindDir, FP2, False, 0, 0, 0)
+  Average(1,    WindDir,        FP2,   False)
+  WindVector(1, WS_ms, WindDir, FP2,   False, 0, 0, 0)
   FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
-  Totalize(1, Rain_mm, FP2, False)
-  Average(1, BP_mbar, FP2, False)
-  Sample(1, NaNCounter, Long, False)
-  Sample(1, WSDiag, FP2)
-  Sample(1, VaporPres, FP2)
-  Sample(1, SeaLevelPres, FP2)
+  Totalize(1,   Rain_mm,        FP2,   False)
+  Average(1,    BP_mbar,        FP2,   False)
+  Sample(1,     NaNCounter,     Long,  False)
+  Sample(1,     WSDiag,         FP2)
+  Sample(1,     VaporPres,      FP2)
+  Sample(1,     SeaLevelPres,   FP2)
 EndTable
 
 DataTable(RainHiRes, True, -1)
   DataInterval(0, 5, min, 10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
-  CardOut(0, MaxNumberOfRecords)
-  Totalize(1, Rain_mm, FP2, False)
-  Sample(1, VWC, FP2
-  Sample(1, GrTemp, FP2)
+  CardOut(0,   MaxNumberOfRecords)
+  Totalize(1,  Rain_mm, FP2, False)
+  Sample(1,    VWC,     FP2)
+  Sample(1,    GrTemp,  FP2)
 EndTable
 
 Sub IridiumTx
@@ -280,8 +281,8 @@ Sub IridiumTx
 
   'Calculate checksum:
   TX_Checksum = CheckSum(TxMeasureData, 23, TxDataLength)
-  CSB1 = TX_Checksum AND &B11111111
-  CSB2 = (TX_Checksum >> 8) AND &B11111111
+  CSB1        = TX_Checksum AND &B11111111
+  CSB2        = (TX_Checksum >> 8) AND &B11111111
 
   'String contatenation: Datalogger_cr1000.pdf, page: 282
   'And append it to the data that is going to be send:
@@ -338,9 +339,9 @@ Sub IridiumTx
   SerialClose(ComRS232)
 EndSub
 
-Sub checkForNaN(value As Float, id as Long)
+Sub checkForNaN(value As Float, id As Long)
   If value = NaN Then
-    value = prevValidValue(id) 'If value exceeds (NaN) set to previous value
+    value          = prevValidValue(id) 'If value exceeds (NaN) set to previous value
     NaNCounter(id) = NaNCounter(id) + 1 'Increase counter to see how many values are NaN
   Else
     prevValidValue(id) = value
@@ -358,7 +359,7 @@ BeginProg
   Next i
 
   For i = 1 To NumberOfSensors Step 1
-    NaNCounter(i) = 0
+    NaNCounter(i)     = 0
     prevValidValue(i) = 0 'Initialize valid values
   Next i
 
@@ -385,7 +386,7 @@ BeginProg
     If SlrW < 0 Then SlrW = 0
     Call checkForNaN(SlrW, ID_SOLAR)
     SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
-    SlrW = SlrW * 5.0  'Convert mV to W/m²
+    SlrW  = SlrW * 5.0  'Convert mV to W/m²
 
     'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
     'WindSonic4 has a fixed frequency set to 1 Hz. See WindSensor_windsonic.pdf, page 10 / 18
@@ -434,12 +435,12 @@ BeginProg
 
     If TimeIntoInterval (TimeModemOff, MinutesPerDay, Min) Then
       PortSet (5, 0)
-      SendFiles = False
+      SendFiles      = False
       AlreadySending = False
     EndIf
 
     If TimeIntoInterval (TimeModemOn + TimeModemWarmUp, MinutesPerDay, Min) Then
-      SendFiles = True
+      SendFiles      = True
       AlreadySending = False
     EndIf
 
@@ -450,8 +451,7 @@ BeginProg
       For i = 1 To MaxNumberOfFailures Step 1
         If SavedLength(i) > 0 AND BattV >= 11.5 Then
           TxMeasureData = SavedData(i)
-          TxDataLength = SavedLength(i)
-
+          TxDataLength  = SavedLength(i)
           NumOfTxErrors = 0
 
           Call IridiumTx()
@@ -478,7 +478,7 @@ BeginProg
             For i = 1 To MaxNumberOfFailures Step 1
               'Search for an empty (unused) slot
               If SavedLength(i) = 0 Then
-                SavedData(i) = TxMeasureData
+                SavedData(i)   = TxMeasureData
                 SavedLength(i) = TxDataLength
                 ExitFor
               EndIf
@@ -490,7 +490,7 @@ BeginProg
         FileClose(FileHandle)
       Next tableIndex
 
-      SendFiles = False
+      SendFiles      = False
       AlreadySending = False
       PortSet (5, 0)
     EndIf
