@@ -148,6 +148,7 @@ Public SerialResponse4 As String * 64
 Public SerialResponse5 As String * 64
 
 Dim SendFiles As Boolean
+Public AlreadySending As Boolean
 Dim FileHandle, TxDataLength, NumOfTxErrors, i As Long
 Dim TxMeasureData As String * ReadMax
 Public ErrorCode(6) As Long
