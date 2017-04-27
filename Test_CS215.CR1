@@ -1,0 +1,40 @@
+'Program measures one CS215 sensor every 5 seconds and stores the average
+'temperature and a sample of relative humidity every 10 minutes.
+'Wiring Diagram
+'==============
+'CS215
+' Wire
+' Colour       Function          CR1000
+' -----        --------          -------
+' Red          Power (12V)       12V
+' Green        SDI-12 signal     C7
+' Black        Power ground      G
+' White        Power ground      G
+' Clear        Shield            Signal Ground
+
+'Declare the variable array for the measurement
+Public TRHData(2)
+
+Alias TRHData(1) = AirTC
+Alias TRHData(2) = RH
+
+Units AirTC = Deg C
+Units RH=%
+
+'Define Data Tables
+DataTable(Ten_Minutes, True, -1)
+  DataInterval(0, 10, Min, 10)
+  Average(1, AirTC, FP2, False)
+  Sample(1, RH, FP2)
+EndTable
+
+'Main Program
+BeginProg
+  'Main Scan
+  Scan(5, Sec, 1, 0)
+    'CS215 Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
+    SDI12Recorder(TRHData(), 7, "0", "M!", 1, 0)
+    'Call Data Tables and Store Data
+    CallTable(Ten_Minutes)
+  NextScan
+EndProg
