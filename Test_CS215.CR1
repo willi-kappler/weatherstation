@@ -14,26 +14,38 @@
 
 'Declare the variable array for the measurement
 Public TRHData(2)
+Public AirTC2
+Public RH2
 
-Alias TRHData(1) = AirTC
-Alias TRHData(2) = RH
+Alias TRHData(1) = AirTC1
+Alias TRHData(2) = RH1
 
-Units AirTC = Deg C
-Units RH=%
+Units AirTC1 = Deg C
+Units RH1 = %
+Units AirTC2 = Deg C
+Units RH2 = %
 
 'Define Data Tables
 DataTable(Ten_Minutes, True, -1)
   DataInterval(0, 10, Min, 10)
-  Average(1, AirTC, FP2, False)
-  Sample(1, RH, FP2)
+  Average(1, AirTC1, FP2, False)
+  Sample(1, RH1, FP2)
+  Average(1, AirTC2, FP2, False)
+  Sample(1, RH2, FP2)
 EndTable
 
 'Main Program
 BeginProg
   'Main Scan
-  Scan(5, Sec, 1, 0)
+  Scan(10, Sec, 1, 0)
     'CS215 Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
     SDI12Recorder(TRHData(), 7, "0", "M!", 1, 0)
+
+    'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
+    PortSet (9, 1)
+    VoltSE(AirTC2, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
+    VoltSE(RH2, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
+
     'Call Data Tables and Store Data
     CallTable(Ten_Minutes)
   NextScan
