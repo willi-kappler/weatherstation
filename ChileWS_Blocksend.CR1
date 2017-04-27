@@ -72,9 +72,9 @@ StationName ("PanDeAzucar")
 
 Const SiteElevation = 320.0 'This is the elevation for Pan de Azucar
 'PdA: 320.0
-'SG: 579
-'LC: 412
-'Na: 1234
+'SG: 579.0
+'LC: 412.0
+'Na: 1234.0
 
 Const MaxNumberOfRecords = 300000
 
