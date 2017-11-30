@@ -14,9 +14,9 @@
 '
 ' Note:  this program sends the data in binary for reduced file size.
 '
-' Last update:  06 March, 2017
+' Last update:  2017.11.30
 '
-' Programmer. W. Kappler, Uni. Tuebingen
+' Author: W. Kappler, Uni. Tuebingen
 '
 '
 '+W/O:  CCSG002220
@@ -135,7 +135,7 @@ Const TimeModemOff = TimeModemOn + ModemActiveDuration
 Const TimeModemWarmUp = 3
 
 'Number of days to store data of failed transmission
-Const MaxNumberOfFailures = 3
+Const MaxNumberOfFailures = 5
 
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
@@ -467,7 +467,7 @@ BeginProg
       For tableIndex = 1 To NumberDataTables Step 1
         FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
 
-        'One frame is ReadMax - 2 bytes long.
+        'One frame is (ReadMax - 2) bytes long.
         TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
         Do While TxDataLength > 0
           NumOfTxErrors = 0
@@ -477,7 +477,7 @@ BeginProg
           If NumOfTxErrors > 0 Then
             'Save the data to be send later (next day)
             For i = 1 To MaxNumberOfFailures Step 1
-              'Search for an empty (unused) slot
+              'Search for an empty / unused slot (== 0)
               If SavedLength(i) = 0 Then
                 SavedData(i)   = TxMeasureData
                 SavedLength(i) = TxDataLength
