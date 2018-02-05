@@ -14,7 +14,7 @@
 '
 ' Note:  this program sends the data in binary for reduced file size.
 '
-' Last update:  06 March, 2017
+' Last update:  24 January, 2018
 '
 ' Programmer. W. Kappler, Uni. Tuebingen
 '
@@ -133,7 +133,7 @@ Const BufferSize = 10
 Public Buffer As String * BufferSize
 
 'Number of days to store data of failed transmission
-Const MaxNumberOfFailures = 3
+Const MaxNumberOfFailures = 5
 
 Public TxCounter As Long
 
@@ -450,8 +450,8 @@ BeginProg
       'All the values for VWC, EC, GrTemp, P, PA and VR are read in at once with one call to SDI12Recorder
       SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
       Call checkForNaN(VWC, ID_VWC)
+      'Leave EC value, no factor 1000 needed!
       Call checkForNaN(EC, ID_EC)
-      EC = EC * 1000.0 'Convert from micro to nano (or meter to kilometer)
       Call checkForNaN(GrTemp, ID_GRTEMP)
       Call checkForNaN(P, ID_P)
       Call checkForNaN(PA, ID_PA)
