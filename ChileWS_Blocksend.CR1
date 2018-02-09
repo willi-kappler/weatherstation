@@ -233,6 +233,11 @@ DataTable(SendDaily, True, -1)
   Minimum(1, BattV,                 FP2, False, False)
   Sample(1,  Status.LithiumBattery, FP2)
   Sample(1,  WSDiag,                FP2)
+  'WK, 2018.02.06, Check CF card status
+  Sample(1, Status.CardStatus(1,1), String)
+  Sample(1, Status.CardBytesFree(1,1), Long)
+  'Sample(1, Status.CardStatus, String)
+  'Sample(1, Status.CardBytesFree, Long)
 EndTable
 
 DataTable(SaveFull, True, -1)
