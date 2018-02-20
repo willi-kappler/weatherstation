@@ -137,6 +137,9 @@ Const MaxNumberOfFailures = 5
 
 Public TxCounter As Long
 
+'CFCard check in public tables
+Public BytesFreeInCard As Long
+
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
 
@@ -226,10 +229,8 @@ DataTable(SendDaily, True, -1)
   Sample(1, Status.LithiumBattery, FP2)
   Sample(1,  WSDiag, FP2)
   'WK, 2018.02.06, Check CF card status
-  Sample(1, Status.CardStatus(1,1), String)
+  'Sample(1, Status.CardStatus(1,1), String)
   Sample(1, Status.CardBytesFree(1,1), Long)
-  'Sample(1, Status.CardStatus, String)
-  'Sample(1, Status.CardBytesFree, Long)
 EndTable
 
 DataTable(SaveFull, True, -1)
@@ -271,6 +272,13 @@ DataTable(RainHiRes, True, -1)
   Totalize(1,  Rain_mm, FP2, False)
   Sample(1,    VWC,     FP2
   Sample(1,    GrTemp,  FP2)
+EndTable
+
+'WK, 2018.02.16, Check CF card status on the fly
+DataTable(CFCardStatus, True, -1)
+  DataInterval(0, 5, min, 10) 'Every 5 minutes
+  'Sample(1, Status.CardStatus(1,1), String)
+  Minimum(1, Status.CardBytesFree(1,1), Long)
 EndTable
 
 Sub TCPTx
@@ -375,6 +383,7 @@ BeginProg
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
+    CallTable CFCardStatus
 
     If TimeIntoInterval (0, MinutesPerDay, Min) Then
       'Reset all NaN counters at 00:00h
@@ -437,6 +446,9 @@ BeginProg
       SendFiles      = False
       AlreadySending = False
     EndIf
+
+    'We want to see the current status of the CF card in the public tables
+    BytesFreeInCard = Status.CardBytesFree(1,1)
 
   NextScan
 
