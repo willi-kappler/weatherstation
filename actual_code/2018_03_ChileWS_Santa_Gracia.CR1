@@ -135,7 +135,7 @@ Const TimeModemOff = TimeModemOn + ModemActiveDuration
 Const TimeModemWarmUp = 3
 
 'Number of days to store data of failed transmission
-Const MaxNumberOfFailures = 5
+Const MaxNumberOfFailures = 3
 
 'Require strings for the unique file names associated with the data table files
 Dim TableFileName(NumberDataTables) As String * 40
@@ -233,9 +233,6 @@ DataTable(SendDaily, True, -1)
   Minimum(1, BattV,                 FP2, False, False)
   Sample(1,  Status.LithiumBattery, FP2)
   Sample(1,  WSDiag,                FP2)
-  'WK, 2018.02.06, Check CF card status
-  Sample(1, Status.CardStatus(1,1), String)
-  Sample(1, Status.CardBytesFree(1,1), Long)
 EndTable
 
 DataTable(SaveFull, True, -1)
@@ -516,8 +513,8 @@ BeginProg
       'All the values for VWC, EC, GrTemp, P, PA and VR are read in at once with one call to SDI12Recorder
       SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
       Call checkForNaN(VWC, ID_VWC)
-      'Leave EC value, no factor 1000 needed!
       Call checkForNaN(EC, ID_EC)
+      EC = EC * 1000.0 'Convert from micro to nano (or meter to kilometer)
       Call checkForNaN(GrTemp, ID_GRTEMP)
       Call checkForNaN(P, ID_P)
       Call checkForNaN(PA, ID_PA)
