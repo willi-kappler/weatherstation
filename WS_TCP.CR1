@@ -14,9 +14,9 @@
 '
 ' Note:  this program sends the data in binary for reduced file size.
 '
-' Last update:  24 January, 2018
+' Last update:  2018.03.05
 '
-' Programmer. W. Kappler, Uni. Tuebingen
+' Author: W. Kappler, Uni. Tuebingen
 '
 '
 '+W/O:  CCSG002220
@@ -274,13 +274,6 @@ DataTable(RainHiRes, True, -1)
   Sample(1,    GrTemp,  FP2)
 EndTable
 
-'WK, 2018.02.16, Check CF card status on the fly
-DataTable(CFCardStatus, True, -1)
-  DataInterval(0, 5, min, 10) 'Every 5 minutes
-  'Sample(1, Status.CardStatus(1,1), String)
-  Minimum(1, Status.CardBytesFree(1,1), Long)
-EndTable
-
 Sub TCPTx
   'SerialOutBlock(ComRS232, TxMeasureData, TxDataLength)
 
@@ -383,7 +376,6 @@ BeginProg
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
-    CallTable CFCardStatus
 
     If TimeIntoInterval (0, MinutesPerDay, Min) Then
       'Reset all NaN counters at 00:00h

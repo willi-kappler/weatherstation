@@ -14,7 +14,7 @@
 '
 ' Note:  this program sends the data in binary for reduced file size.
 '
-' Last update:  2017.11.30
+' Last update:  2018.03.05
 '
 ' Author: W. Kappler, Uni. Tuebingen
 '
@@ -71,6 +71,10 @@ StationName ("PanDeAzucar")
 'StationName ("Nahuelbuta")
 
 Const SiteElevation = 320.0 'This is the elevation for Pan de Azucar
+'Const SiteElevation = 579.0 'This is the elevation for Santa Gracia
+'Const SiteElevation = 412.0 'This is the elevation for La Campana
+'Const SiteElevation = 1234.0 'This is the elevation for Nahuelbuta
+
 'PdA: 320.0
 'SG: 579.0
 'LC: 412.0
@@ -282,13 +286,6 @@ DataTable(RainHiRes, True, -1)
   Sample(1,    GrTemp,  FP2)
 EndTable
 
-'WK, 2018.02.16, Check CF card status on the fly
-DataTable(CFCardStatus, True, -1)
-  DataInterval(0, 5, min, 10) 'Every 5 minutes
-  'Sample(1, Status.CardStatus(1,1), String)
-  Minimum(1, Status.CardBytesFree(1,1), Long)
-EndTable
-
 Sub IridiumTx
   Dim StringBuffer As String * 64
   Dim CSB1, CSB2, TX_Checksum As Long
@@ -435,7 +432,6 @@ BeginProg
     CallTable SendDaily
     CallTable SaveFull
     CallTable RainHiRes
-    CallTable CFCardStatus
 
     If TimeIntoInterval (0, MinutesPerDay, Min) Then
       'Reset all NaN counters at 00:00h
