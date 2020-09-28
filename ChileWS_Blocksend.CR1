@@ -69,6 +69,7 @@
 ' Smp = Standard measurement period
 ' WVc = Wind Vector
 '
+' 30 min interval:
 ' | Parameter                                  | Name in table  | Unit                     | Calculated as |
 ' |--------------------------------------------|----------------|--------------------------|---------------|
 ' | Timestamp                                  | TS             | YYYYMMDD + HH:MM:SS      | N/A           |
@@ -95,29 +96,16 @@
 ' | Precipitation                              | Rain_mm_Tot    | mm                       | Total         |
 ' | Atmospheric pressure                       | BP_mbar_Avg    | mbar                     | Average       |
 ' 
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+'
+' 5 min interval:
+' | Parameter                 | Name in table | Unit                | Calculated as |
+' |---------------------------|---------------|---------------------|---------------|
+' | timestamp                 | TS            | YYYYMMDD + HH:MM:SS | N/A           |
+' | Record number             | RN            | #                   | N/A           |
+' | Precipitation             | Rain_mm_Tot   | mm                  | Total         |
+' | Volumentric water content | VWC           | m3/m3               | Smp           |
+' | Ground (soil) temperature | GrTemp        | Degree Celsius      | Smp           |
+'
 
 
 
