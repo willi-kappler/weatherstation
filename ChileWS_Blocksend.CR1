@@ -318,6 +318,10 @@ DataTable(SaveFull, True, -1)
   Sample(1,     WSDiag,         FP2)
   Sample(1,     VaporPres,      FP2)
   Sample(1,     SeaLevelPres,   FP2)
+EndTable
+
+DataTable(SaveStatus, True, -1)
+  DataInterval(0, 30, min, 10)
   'WK, 2020.09.28, Check logger status
   Sample(1, Status.CardStatus, String)
   Sample(1, Status.WatchdogErrors, Long)
@@ -481,6 +485,7 @@ BeginProg
     CallTable SendHourly
     CallTable SendDaily
     CallTable SaveFull
+    CallTable SaveStatus
     CallTable RainHiRes
 
     If TimeIntoInterval (0, MinutesPerDay, Min) Then
