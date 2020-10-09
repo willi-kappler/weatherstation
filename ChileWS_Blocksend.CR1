@@ -323,6 +323,7 @@ EndTable
 DataTable(SaveStatus, True, -1)
   DataInterval(0, 30, min, 10)
   'WK, 2020.09.28, Check logger status
+  CardOut(0,    MaxNumberOfRecords)
   Sample(1, Status.CardStatus, String)
   Sample(1, Status.WatchdogErrors, Long)
   Sample(1, Status.SkippedScan, Long)
