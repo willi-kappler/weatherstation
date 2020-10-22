@@ -95,7 +95,7 @@
 ' | Wind direction (calculated as vector)      | WindDir_D1_WVT | degrees                  | WVc           |
 ' | Precipitation                              | Rain_mm_Tot    | mm                       | Total         |
 ' | Atmospheric pressure                       | BP_mbar_Avg    | mbar                     | Average       |
-' 
+'
 '
 ' 5 min interval:
 ' | Parameter                 | Name in table | Unit                | Calculated as |
@@ -320,10 +320,21 @@ DataTable(SaveFull, True, -1)
   Sample(1,     SeaLevelPres,   FP2)
 EndTable
 
-DataTable(SaveStatus, True, -1)
+DataTable(SaveStatusCF, True, -1)
   DataInterval(0, 30, min, 10)
   'WK, 2020.09.28, Check logger status
   CardOut(0,    MaxNumberOfRecords)
+  Sample(1, Status.CardStatus, String)
+  Sample(1, Status.WatchdogErrors, Long)
+  Sample(1, Status.SkippedScan, Long)
+  Sample(1, Status.SkippedSlowScan, Long)
+  Sample(1, Status.ProgErrors, Long)
+  Sample(1, Status.MemoryFree, Long)
+EndTable
+
+DataTable(SaveStatusLogger, True, -1)
+  DataInterval(0, 30, min, 10)
+  'WK, 2020.10.22, Check logger status
   Sample(1, Status.CardStatus, String)
   Sample(1, Status.WatchdogErrors, Long)
   Sample(1, Status.SkippedScan, Long)
@@ -486,7 +497,8 @@ BeginProg
     CallTable SendHourly
     CallTable SendDaily
     CallTable SaveFull
-    CallTable SaveStatus
+    CallTable SaveStatusCF
+    CallTable SaveStatusLogger
     CallTable RainHiRes
 
     If TimeIntoInterval (0, MinutesPerDay, Min) Then
