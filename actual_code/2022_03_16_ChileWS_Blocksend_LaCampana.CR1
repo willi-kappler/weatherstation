@@ -1,0 +1,610 @@
+' Script for Cambell Weather Station data transfer via Iridium model
+'
+' Copyright 2016, Professor Todd A Ehlers, Department of Geosciences,
+' University of Tuebingen, Germany
+' Contact Email:  todd.ehlers@uni-tuebingen.de
+'
+' This program is free for use for academic, non-profit use.  Commercial use, or
+' redistribution of the program is not allowed.  Interested persons should
+' contact Todd Ehlers for redistribution or sharing of this program.
+'
+' No guarantee of functionality is provided.  Use at your own risk.  Todd Ehlers
+' and the Univeristy of Tuebingen assume no reposibility for the proper functioning
+' of this software.
+'
+' Note:  this program sends the data in binary for reduced file size.
+'
+' Last update:  2019.09.28
+'
+' Author: W. Kappler, Uni. Tuebingen
+'
+'
+'+W/O:  CCSG002220
+'-Wiring For CR1000-
+'
+'  HC2S3 (panel switched power)
+'    1H:  Brown
+'    1L:  White
+'    AG:  Yellow
+'    G:  Grey
+'    G:  Clear
+'    SW-12:  Green
+'
+'  CS300 Pyranometer
+'    AG:  Black
+'    2H:  Red
+'    G:  Clear
+'
+'  CS655 Water Content Reflectometer (VWC, EC, T, P, PA, AND VR)
+'    G:  Black
+'    G:  Clear
+'    G:  Orange
+'    12V:  Red
+'    C1:  Green
+'
+'  WindSonic4 (SDI-12) Two Dimensional Ultrasonic Wind Sensor
+'    G:  Clear
+'    G:  Black
+'    12V:  Red
+'    C3:  Green
+'
+'  ARG100 Rain Gauge (CSL)
+'    AG:  Clear
+'    P1:  Black
+'
+'  CS100 Barometric Pressure Sensor
+'    2L:  Blue
+'    AG:  Yellow
+'    G:  Clear
+'    G:  Black
+'    12V:  Red
+'    C2:  Green
+'
+'  9522B Iridium Satellite Modem and COM9522B Interface Modem
+'    G:  Black
+'    12V:  Red
+'    C5:  Yellow
+'
+'
+' Smp = Standard measurement period
+' WVc = Wind Vector
+'
+' 30 min interval:
+' | Parameter                                  | Name in table  | Unit                     | Calculated as |
+' |--------------------------------------------|----------------|--------------------------|---------------|
+' | Timestamp                                  | TS             | YYYYMMDD + HH:MM:SS      | N/A           |
+' | Record number                              | RN             | #                        | N/A           |
+' | Lead battery voltage                       | BattV_Avg      | Volts                    | Average       |
+' | Panel temperature                          | PTemp_C_Avg    | Degree Celsius           | Average       |
+' | Air temperature                            | AirTC_Avg      | Degree Celsius           | Average       |
+' | Relative humidity                          | RH             | %                        | Smp           |
+' | Vapor pressure                             | PVap_Avg       | kPa                      | Average       |
+' | Solar radiation                            | SlrW_Avg       | W/m²                     | Average       |
+' | Solar radiation                            | SlrMJ_Tot      | MJ/m²                    | Total         |
+' | Volumetric water content                   | VWC_Avg        | m³/m³                    | Average       |
+' | Ground (soil) temperature                  | GrTemp_Avg     | Degree Celsius           | Average       |
+' | (Bulk) electrical conductivity             | EC_Avg         | default: dS/m, now: mS/m | Average       |
+' | Permitivity                                | P_Avg          | (unitless)               | Average       |
+' | Period average                             | PA_Avg         | nSec                     | Average       |
+' | Voltage ratio                              | VR_Avg         | (unitless)               | Average       |
+' | Wind speed                                 | WS_ms_Avg      | meters/second            | Average       |
+' | Max. wind speed                            | WS_ms_max      | meters/second            | Max           |
+' | Min. wind speed                            | WS_ms_min      | meters/second            | Min           |
+' | Wind direction                             | WindDir_Avg    | degrees                  | Average       |
+' | Wind speed after WindVector transformation | WS_ms_S_WVT    | meters/second            | WVc           |
+' | Wind direction (calculated as vector)      | WindDir_D1_WVT | degrees                  | WVc           |
+' | Precipitation                              | Rain_mm_Tot    | mm                       | Total         |
+' | Atmospheric pressure                       | BP_mbar_Avg    | mbar                     | Average       |
+'
+'
+' 5 min interval:
+' | Parameter                 | Name in table | Unit                | Calculated as |
+' |---------------------------|---------------|---------------------|---------------|
+' | timestamp                 | TS            | YYYYMMDD + HH:MM:SS | N/A           |
+' | Record number             | RN            | #                   | N/A           |
+' | Precipitation             | Rain_mm_Tot   | mm                  | Total         |
+' | Volumentric water content | VWC           | m3/m3               | Smp           |
+' | Ground (soil) temperature | GrTemp        | Degree Celsius      | Smp           |
+'
+
+
+
+'StationName ("PanDeAzucar")
+'StationName ("SantaGracia")
+StationName ("LaCampana")
+'StationName ("Nahuelbuta")
+
+'Const SiteElevation = 320.0 'This is the elevation for Pan de Azucar
+'Const SiteElevation = 579.0 'This is the elevation for Santa Gracia
+Const SiteElevation = 412.0 'This is the elevation for La Campana
+'Const SiteElevation = 1234.0 'This is the elevation for Nahuelbuta
+
+'PdA: 320.0
+'SG: 579.0
+'LC: 412.0
+'Na: 1234.0
+
+Const MaxNumberOfRecords = 300000
+
+Const NumberDataTables = 2
+
+'NaN counter constants for sensors
+Const NumberOfSensors = 14
+Const ID_AIRTC        = 1
+Const ID_RH           = 2
+Const ID_SOLAR        = 3
+Const ID_WINDDIR      = 4
+Const ID_WSMS         = 5
+Const ID_WSDIAG       = 6
+Const ID_RAINMM       = 7
+Const ID_BPMBAR       = 8
+Const ID_VWC          = 9
+Const ID_EC           = 10
+Const ID_GRTEMP       = 11
+Const ID_P            = 12
+Const ID_PA           = 13
+Const ID_VR           = 14
+
+'Maximum according to IRDM_IridiumSBDService_V3_DEVGUIDE_9Mar2012.pdf
+'Page 11: "9522B: 1960 Bytes"
+Const ReadMax = 1960
+
+'1440 = 24 hours a day * 60 minutes per hour
+Const MinutesPerHour = 60
+Const MinutesPerDay = 24 * MinutesPerHour
+
+'5 means TOB1, binary file without header but with time stamp
+'See Datalogger_cr1000.pdf, Page 378
+Const TableFormatOption = 5
+
+'0 means overwrite the same file each time
+Const TableMaxFiles = 0
+
+'Write data table to CF card every day at 12:10h
+'Thus we have at least one data record (at 12:00h) that will be send at 12:20h
+Const HourTableWrite = 12
+Const MinuteTableWrite = 10
+Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
+
+'Time values (hour and minute) for modem on / off state
+
+'Turn on modem at 12:20 every 24 hours
+Const HourModemOn = 12
+Const MinuteModemOn = 20
+Const TimeModemOn = (HourModemOn * 60) + MinuteModemOn
+
+'Keep modem avtive for 50 minutes
+Const ModemActiveDuration = 50
+
+'Turn off modem at 13:10 every 24 hours
+Const TimeModemOff = TimeModemOn + ModemActiveDuration
+
+'Allow the modem 3 minutes for warm up before sending files.
+Const TimeModemWarmUp = 3
+
+'Number of days to store data of failed transmission
+Const MaxNumberOfFailures = 5
+
+'Require strings for the unique file names associated with the data table files
+Dim TableFileName(NumberDataTables) As String * 40
+
+'Message Sending Status Variables
+Public SerialResponse1 As String * 64
+Public SerialResponse2 As String * 64
+Public SerialResponse3 As String * 64
+Public SerialResponse4 As String * 64
+Public SerialResponse5 As String * 64
+
+'CFCard check in public tables
+Public BytesFreeInCard As Long
+
+Dim SendFiles As Boolean
+Public AlreadySending As Boolean
+Dim FileHandle, TxDataLength, NumOfTxErrors, i As Long
+Dim TxMeasureData As String * ReadMax
+Public ErrorCode(6) As Long
+
+'Save the data if an error occured. Send this data on the next day.
+'Store the last three failures
+Dim SavedData(MaxNumberOfFailures) As String * ReadMax
+Dim SavedLength(MaxNumberOfFailures) As Long
+
+Public tableIndex As Long
+Public TsinceRain  As Long = 100
+Public CS655cntr As Long
+
+'Declare Variables and Units
+Public BattV
+Public PTemp_C
+Public AirTC
+Public RH
+Public PVap
+Public SlrW
+Public prevValidValue(NumberOfSensors)
+Public NaNCounter(NumberOfSensors) As Long
+'We may need NanCode later...
+'Public NaNCode As Long
+Public SlrMJ
+Public CS655(6)
+Public WSData(3)
+Public Rain_mm
+Public BP_mbar
+Public VaporPres
+Public SeaLevelPres
+
+Alias CS655(1)  = VWC
+Alias CS655(2)  = EC
+Alias CS655(3)  = GrTemp
+Alias CS655(4)  = P
+Alias CS655(5)  = PA
+Alias CS655(6)  = VR
+Alias WSData(1) = WindDir
+Alias WSData(2) = WS_ms
+Alias WSData(3) = WSDiag
+
+Units BattV=Volts
+Units PTemp_C=Deg C
+Units AirTC=Deg C
+Units RH=%
+Units PVap=kPa
+Units SlrW=W/m²
+Units SlrMJ=MJ/m²
+Units Rain_mm=mm
+Units BP_mbar=mbar
+Units VWC=m³/m³
+Units EC=dS/m
+Units GrTemp=Deg C
+Units P=unitless
+Units PA=nSec
+Units VR=unitless
+Units WindDir=degrees
+Units WS_ms=meters/second
+Units WSDiag=unitless
+
+
+'Define Data Tables
+DataTable(SendHourly, True, -1)
+  DataInterval(0, MinutesPerHour, min, 10)
+  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
+  Average(1,  AirTC,   FP2, False)
+  Sample(1,   RH,      FP2)
+  Average(1,  SlrW,    FP2, False)
+  Average(1,  VWC,     FP2, False)
+  Average(1,  GrTemp,  FP2, False)
+  Average(1,  WS_ms,   FP2, False)
+  Maximum(1,  WS_ms,   FP2, False, False)
+  FieldNames("WS_ms_max")
+  Average(1,  WindDir, FP2, False)
+  Totalize(1, Rain_mm, FP2, False)
+  Average(1,  BP_mbar, FP2, False)
+EndTable
+
+DataTable(SendDaily, True, -1)
+  DataInterval(0, MinutesPerDay, min, 10)
+  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
+  Minimum(1, BattV,                 FP2, False, False)
+  Sample(1,  Status.LithiumBattery, FP2)
+  Sample(1,  WSDiag,                FP2)
+  Sample(1, Status.CardBytesFree, Long)
+EndTable
+
+DataTable(SaveFull, True, -1)
+  DataInterval(0, 30, min, 10)
+  CardOut(0,    MaxNumberOfRecords)
+  Average(1,    BattV,          FP2,   False)
+  Average(1,    PTemp_C,        FP2,   False)
+  Average(1,    AirTC,          FP2,   False)
+  Sample(1,     RH,             FP2)
+  Average(1,    PVap,           FP2,   False)
+  Average(1,    SlrW,           FP2,   False)
+  Totalize(1,   SlrMJ,          IEEE4, False)
+  Average(1,    VWC,            FP2,   False)
+  Average(1,    GrTemp,         FP2,   False)
+  Average(1,    EC,             FP2,   False)
+  Average(1,    P,              FP2,   False)
+  Average(1,    PA,             FP2,   False)
+  Average(1,    VR,             FP2,   False)
+  Average(1,    WS_ms,          FP2,   False)
+  Maximum(1,    WS_ms,          FP2,   False, False)
+  FieldNames("WS_ms_max")
+  Minimum(1,    WS_ms,          FP2,   False, False)
+  FieldNames("WS_ms_min"
+  Average(1,    WindDir,        FP2,   False)
+  WindVector(1, WS_ms, WindDir, FP2,   False, 0, 0, 0)
+  FieldNames("WS_ms_S_WVT,WindDir_D1_WVT")
+  Totalize(1,   Rain_mm,        FP2,   False)
+  Average(1,    BP_mbar,        FP2,   False)
+  Sample(1,     NaNCounter,     Long,  False)
+  Sample(1,     WSDiag,         FP2)
+  Sample(1,     VaporPres,      FP2)
+  Sample(1,     SeaLevelPres,   FP2)
+EndTable
+
+DataTable(SaveStatusCF, True, -1)
+  DataInterval(0, 30, min, 10)
+  'WK, 2020.09.28, Check logger status
+  CardOut(0,    MaxNumberOfRecords)
+  Sample(1, Status.CardStatus, String)
+  Sample(1, Status.WatchdogErrors, Long)
+  Sample(1, Status.SkippedScan, Long)
+  Sample(1, Status.SkippedSlowScan, Long)
+  Sample(1, Status.ProgErrors, Long)
+  Sample(1, Status.MemoryFree, Long)
+EndTable
+
+DataTable(SaveStatusLogger, True, -1)
+  DataInterval(0, 30, min, 10)
+  'WK, 2020.10.22, Check logger status
+  Sample(1, Status.CardStatus, String)
+  Sample(1, Status.WatchdogErrors, Long)
+  Sample(1, Status.SkippedScan, Long)
+  Sample(1, Status.SkippedSlowScan, Long)
+  Sample(1, Status.ProgErrors, Long)
+  Sample(1, Status.MemoryFree, Long)
+EndTable
+
+DataTable(RainHiRes, True, -1)
+  DataInterval(0, 5, min, 10)
+  DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
+  CardOut(0,   MaxNumberOfRecords)
+  Totalize(1,  Rain_mm, FP2, False)
+  Sample(1,    VWC,     FP2)
+  Sample(1,    GrTemp,  FP2)
+EndTable
+
+Sub IridiumTx
+  Dim StringBuffer As String * 64
+  Dim CSB1, CSB2, TX_Checksum As Long
+
+  'Calculate checksum:
+  TX_Checksum = CheckSum(TxMeasureData, 23, TxDataLength)
+  CSB1        = TX_Checksum AND &B11111111
+  CSB2        = (TX_Checksum >> 8) AND &B11111111
+
+  'String contatenation: Datalogger_cr1000.pdf, page: 282
+  'And append it to the data that is going to be send:
+  TxMeasureData(1, 1, TxDataLength + 1) = CHR(CSB2) 'Send second byte first!
+  TxMeasureData(1, 1, TxDataLength + 2) = CHR(CSB1)
+
+  'Initialize:
+  SerialOpen(ComRS232, 19200, 0, 0, 2000)
+  SerialOut(ComRS232, "AT+CIER=1,0,1" + CHR(13), "", 1, 10)
+  SerialIn(SerialResponse1, ComRS232, 6000, 13, 64)
+
+  'Prepare send:
+  StringBuffer = "AT+SBDWB=" + TxDataLength + CHR(13)
+  SerialOut(ComRS232, StringBuffer, "", 1, 10)
+  SerialIn(SerialResponse2, ComRS232, 6000, 13, 64)
+
+  'If there already was an error, don't try to send binary data at all
+  If NumOfTxErrors = 0 Then
+    'Send data including checksum:
+    SerialOutBlock(ComRS232, TxMeasureData, TxDataLength + 2)
+
+    'SerialResponse3 should be 0 if everything went well.
+    'Otherwise see error codes in the manual:
+    'IRDM_ISU_ATCommandReference.pdf, page 95 / 110
+    '0: OK
+    '1: Timeout
+    '2: Checksum error
+    '3: Message size not correct
+    SerialIn(SerialResponse3, ComRS232, 6000, 13, 64)
+
+    'Convert String respone to Integer
+    'SplitStr(result array, input string, filter = "", max number of values = 6, option = 0)
+    'ErrorCode: result array
+    'SerialResponse3: input string
+    '"": filter (not used in this case)
+    '6: max number of values
+    '0: split option, here 0 means numeric
+    SplitStr(ErrorCode, SerialResponse3, "", 6, 0)
+
+    If ErrorCode(1) <> 0 Then
+      'An error occured.
+      'Increase number of Errors, so that we know that this data frame was not sent correctly
+      NumOfTxErrors = NumOfTxErrors + 1
+    EndIf
+  EndIf
+
+  SerialOut(ComRS232, "AT+SBDI" + CHR(13), "",  1, 10)
+  SerialIn(SerialResponse4, ComRS232, 6000, 13, 64)
+
+  'Clear modem buffer
+  SerialOut(ComRS232, "AT+SBDD0" + CHR(13), "", 1, 10)
+  SerialIn(SerialResponse5, ComRS232, 6000, 13, 64)
+
+  SerialClose(ComRS232)
+EndSub
+
+Sub checkForNaN(value As Float, id As Long)
+  If value = NaN Then
+    value          = prevValidValue(id) 'If value exceeds (NaN) set to previous value
+    NaNCounter(id) = NaNCounter(id) + 1 'Increase counter to see how many values are NaN
+  Else
+    prevValidValue(id) = value
+  EndIf
+EndSub
+
+'Main Program
+BeginProg
+  'A USR Drive is required for the COM9602 subroutine to store some temporary files.
+  SetStatus ("USRDriveSize", 32768)
+
+  'Initialize storage for failed transmissions
+  For i = 1 To MaxNumberOfFailures Step 1
+    SavedLength(i) = 0
+  Next i
+
+  For i = 1 To NumberOfSensors Step 1
+    NaNCounter(i)     = 0
+    prevValidValue(i) = 0 'Initialize valid values
+  Next i
+
+  'Main Scan
+  Scan(1, min, 1, 0)
+
+    'Default Datalogger Battery Voltage measurement 'BattV'
+    Battery(BattV)
+    'Default Wiring Panel Temperature measurement 'PTemp_C'
+    PanelTemp(PTemp_C,_50Hz)
+
+    'HC2S3 (panel switched power) Temperature & Relative Humidity Sensor measurements 'AirTC' and 'RH'
+    PortSet (9, 1)
+    VoltSE(AirTC, 1, mV2500, 1, 0, 0, _50Hz, 0.1, -40)
+    Call checkForNaN(AirTC, ID_AIRTC)
+    VoltSE(RH, 1, mV2500, 2, 0, 0, _50Hz, 0.1, 0)
+    Call checkForNaN(RH, ID_RH)
+    'Trim RH value
+    If RH > 100 AND RH < 103 Then RH = 100
+    VaporPressure(PVap, AirTC, RH)
+
+    'CS300 Pyranometer measurements 'SlrMJ' and 'SlrW'
+    VoltSE(SlrW, 1, mV2500, 3, 1, 0, _50Hz, 1.0, 0)
+    If SlrW < 0 Then SlrW = 0
+    Call checkForNaN(SlrW, ID_SOLAR)
+    SlrMJ = SlrW * (0.000005 * 60)  'Convert mV to MJ/m² with 60s measurement interval
+    SlrW  = SlrW * 5.0  'Convert mV to W/m²
+
+    'WindSonic4 Two Dimensional Sonic Wind Speed & Direction Sensor measurements 'WindDir', 'WS_ms', and 'WSDiag'
+    'WindSonic4 has a fixed frequency set to 1 Hz. See WindSensor_windsonic.pdf, page 10 / 18
+    'Get data from WindSonic4: WindDir, WS_ms and WSDiag are read in all at once with one call to SDI12Recorder
+    SDI12Recorder(WindDir, 3, "0", "R0!", 1, 0)
+    Call checkForNaN(WindDir, ID_WINDDIR)
+    Call checkForNaN(WS_ms, ID_WSMS)
+    Call checkForNaN(WSDiag, ID_WSDIAG)
+
+    'ARG100 Tipping Bucket Rain Gauge measurement 'Rain_mm'
+    PulseCount(Rain_mm, 1, 1, 2, 0, 0.2, 0)
+    Call checkForNaN(Rain_mm, ID_RAINMM)
+    If (Rain_mm > 0.19) Then
+      TsinceRain = 0
+    Else
+      TsinceRain = TsinceRain + 1
+    EndIf
+
+    'CS100 Barometric Pressure Sensor measurement 'BP_mbar'
+    '6.1.1 Performance for “Standard” Range Option
+    '600 mb to 1100 mb (hPa)
+    'See AirPressureSensor_cs100.pdf, page 6 / 16
+    PortSet(2, 1)
+    VoltSE(BP_mbar, 1, mV2500, 4, 1, 0, _50Hz, 0.2, 600)
+    Call checkForNaN(BP_mbar, ID_BPMBAR)
+
+    VaporPressure(VaporPres, AirTC, RH)
+    SeaLevelPres = BP_mbar + (1013.25 * (1 - ((1 - (SiteElevation / 44307.69231))^5.25328)))
+
+    'Call Data Tables and Store Data
+    CallTable SendHourly
+    CallTable SendDaily
+    CallTable SaveFull
+    CallTable SaveStatusCF
+    CallTable SaveStatusLogger
+    CallTable RainHiRes
+
+    If TimeIntoInterval (0, MinutesPerDay, Min) Then
+      'Reset all NaN counters at 00:00h
+      For i = 1 To NumberOfSensors Step 1
+        NaNCounter(i) = 0
+      Next i
+    EndIf
+
+    If TimeIntoInterval (TimeModemOn, MinutesPerDay, Min) Then
+      PortSet (5, 1)
+    EndIf
+
+    If TimeIntoInterval (TimeModemOff, MinutesPerDay, Min) Then
+      PortSet (5, 0)
+      SendFiles      = False
+      AlreadySending = False
+    EndIf
+
+    If TimeIntoInterval (TimeModemOn + TimeModemWarmUp, MinutesPerDay, Min) Then
+      SendFiles      = True
+      AlreadySending = False
+    EndIf
+
+    If SendFiles AND (NOT AlreadySending) Then
+      AlreadySending = True
+      'Are there some leftovers of the previous day ?
+      'If yes try to send it now if the battery has enough power
+      For i = 1 To MaxNumberOfFailures Step 1
+        If SavedLength(i) > 0 AND BattV >= 11.5 Then
+          TxMeasureData = SavedData(i)
+          TxDataLength  = SavedLength(i)
+          NumOfTxErrors = 0
+
+          Call IridiumTx()
+
+          If NumOfTxErrors = 0 Then
+            'Transmission successfully, clear saved data
+            SavedLength(i) = 0
+          EndIf
+        EndIf
+      Next i
+
+      For tableIndex = 1 To NumberDataTables Step 1
+        FileHandle = FileOpen(TableFileName(tableIndex), "rb", 0)
+
+        'One frame is (ReadMax - 2) bytes long.
+        TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
+        Do While TxDataLength > 0
+          NumOfTxErrors = 0
+
+          Call IridiumTx()
+
+          If NumOfTxErrors > 0 Then
+            'Save the data to be send later (next day)
+            For i = 1 To MaxNumberOfFailures Step 1
+              'Search for an empty / unused slot (== 0)
+              If SavedLength(i) = 0 Then
+                SavedData(i)   = TxMeasureData
+                SavedLength(i) = TxDataLength
+                ExitFor
+              EndIf
+            Next
+          EndIf
+          TxDataLength = FileRead(FileHandle, TxMeasureData, ReadMax - 2)
+        Loop
+
+        FileClose(FileHandle)
+      Next tableIndex
+
+      SendFiles      = False
+      AlreadySending = False
+      PortSet (5, 0)
+    EndIf
+
+  'We want to see the current status of the CF card in the public tables
+  BytesFreeInCard = Status.CardBytesFree(1,1)
+
+  NextScan
+
+  SlowSequence
+  'Ground Measurements every 15 or 30 Minutes
+  Scan(15, min, 0, 0)
+    'Conunter to do CS655 measurement only every 30 Minutes unless RainHiRes is saved, then every 15 Min
+    If (TsinceRain <= 30) Then
+      CS655cntr = 0
+    Else
+      CS655cntr = CS655cntr - 1
+    EndIf
+
+    If (CS655cntr < 1) Then
+      'CS655 Water Content Reflectometer measurements 'VWC', 'EC', and 'Temp'
+      'All the values for VWC, EC, GrTemp, P, PA and VR are read in at once with one call to SDI12Recorder
+      SDI12Recorder(VWC, 1, "0", "M3!", 1, 0)
+      Call checkForNaN(VWC, ID_VWC)
+      'Leave EC value, no factor 1000 needed!
+      Call checkForNaN(EC, ID_EC)
+      Call checkForNaN(GrTemp, ID_GRTEMP)
+      Call checkForNaN(P, ID_P)
+      Call checkForNaN(PA, ID_PA)
+      Call checkForNaN(VR, ID_VR)
+      'Resest Counter
+      CS655cntr = 2
+    EndIf
+
+  NextScan
+  EndSequence
+
+EndProg
