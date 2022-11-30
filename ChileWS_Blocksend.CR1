@@ -14,7 +14,7 @@
 '
 ' Note:  this program sends the data in binary for reduced file size.
 '
-' Last update:  2019.09.28
+' Last update:  2022.11.30
 '
 ' Author: W. Kappler, Uni. Tuebingen
 '
@@ -265,7 +265,9 @@ Units WSDiag=unitless
 'Define Data Tables
 DataTable(SendHourly, True, -1)
   DataInterval(0, MinutesPerHour, min, 10)
-  TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
+  'TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
+  ' 2022.11.30: New - write data to serial USB key / adapter'
+  TableFile ("USB:" + Status.SerialNumber + "_SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
   Average(1,  AirTC,   FP2, False)
   Sample(1,   RH,      FP2)
   Average(1,  SlrW,    FP2, False)
@@ -281,7 +283,9 @@ EndTable
 
 DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
-  TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
+  'TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
+  ' 2022.11.30: New - write data to serial USB key / adapter'
+  TableFile ("USB:" + Status.SerialNumber + "_SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
   Minimum(1, BattV,                 FP2, False, False)
   Sample(1,  Status.LithiumBattery, FP2)
   Sample(1,  WSDiag,                FP2)
@@ -290,7 +294,9 @@ EndTable
 
 DataTable(SaveFull, True, -1)
   DataInterval(0, 30, min, 10)
-  CardOut(0,    MaxNumberOfRecords)
+  'CardOut(0,    MaxNumberOfRecords)
+  ' 2022.11.30: New - write data to serial USB key / adapter'
+  TableFile ("USB:" + Status.SerialNumber + "_SaveFull", TableFormatOption, TableMaxFiles, TimeToWriteTable, 30, min, 0, 0)
   Average(1,    BattV,          FP2,   False)
   Average(1,    PTemp_C,        FP2,   False)
   Average(1,    AirTC,          FP2,   False)
@@ -323,7 +329,9 @@ EndTable
 DataTable(SaveStatusCF, True, -1)
   DataInterval(0, 30, min, 10)
   'WK, 2020.09.28, Check logger status
-  CardOut(0,    MaxNumberOfRecords)
+  'CardOut(0,    MaxNumberOfRecords)
+  ' 2022.11.30: New - write data to serial USB key / adapter'
+  TableFile ("USB:" + Status.SerialNumber + "_SaveStatusCF", TableFormatOption, TableMaxFiles, TimeToWriteTable, 30, min, 0, 0)
   Sample(1, Status.CardStatus, String)
   Sample(1, Status.WatchdogErrors, Long)
   Sample(1, Status.SkippedScan, Long)
@@ -346,7 +354,9 @@ EndTable
 DataTable(RainHiRes, True, -1)
   DataInterval(0, 5, min, 10)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
-  CardOut(0,   MaxNumberOfRecords)
+  'CardOut(0,   MaxNumberOfRecords)
+  ' 2022.11.30: New - write data to serial USB key / adapter'
+  TableFile ("USB:" + Status.SerialNumber + "_RainHiRes", TableFormatOption, TableMaxFiles, TimeToWriteTable, 5, min, 0, 0)
   Totalize(1,  Rain_mm, FP2, False)
   Sample(1,    VWC,     FP2)
   Sample(1,    GrTemp,  FP2)
