@@ -157,14 +157,14 @@ Const MinutesPerDay = 24 * MinutesPerHour
 'See Datalogger_cr1000.pdf, Page 378
 Const TableFormatOption = 5
 
-'0 means overwrite the same file each time
-Const TableMaxFiles = 0
+'-1 means determine space on the flash storage automatically.
+Const TableMaxFiles = -1
 
 'Write data table to CF card every day at 12:10h
 'Thus we have at least one data record (at 12:00h) that will be send at 12:20h
 Const HourTableWrite = 12
 Const MinuteTableWrite = 10
-Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
+Const TimeToWriteTable = 0
 
 'Time values (hour and minute) for modem on / off state
 
