@@ -155,16 +155,21 @@ Const MinutesPerDay = 24 * MinutesPerHour
 
 '5 means TOB1, binary file without header but with time stamp
 'See Datalogger_cr1000.pdf, Page 378
-Const TableFormatOption = 5
+'0 means TOB1, binary with header and time stamp
+Const TableFormatOption = 0
 
 '-1 means determine space on the flash storage automatically.
-Const TableMaxFiles = -1
+'0 means overwrite the same file each time
+Const TableMaxFiles = 0
 
-'Write data table to CF card every day at 12:10h
-'Thus we have at least one data record (at 12:00h) that will be send at 12:20h
+'0 means use time intervall instead of number of records
+Const NumOfRecords
+
 Const HourTableWrite = 12
 Const MinuteTableWrite = 10
-Const TimeToWriteTable = 0
+'Const TimeToWriteTable = (HourTableWrite * MinutesPerHour) + MinuteTableWrite
+'Write data every 60 minutes to the USB key
+Const TimeToWriteTable = 60
 
 'Time values (hour and minute) for modem on / off state
 
@@ -266,8 +271,9 @@ Units WSDiag=unitless
 DataTable(SendHourly, True, -1)
   DataInterval(0, MinutesPerHour, min, 10)
   'TableFile ("USR:SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
+  'TableFile(Storage_Path, Format_Options, Max_Number_Of_Files, Number_Of_Records, Time_Interval, Unit, Output_Status, Last_File_Name)
   ' 2022.11.30: New - write data to serial USB key / adapter'
-  TableFile ("USB:" + Status.SerialNumber + "_SendHourly", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(1))
+  TableFile ("USB:" + Status.SerialNumber + "_SendHourly", TableFormatOption, TableMaxFiles, NumOfRecords, TimeToWriteTable, min, 0, 0)
   Average(1,  AirTC,   FP2, False)
   Sample(1,   RH,      FP2)
   Average(1,  SlrW,    FP2, False)
@@ -285,7 +291,7 @@ DataTable(SendDaily, True, -1)
   DataInterval(0, MinutesPerDay, min, 10)
   'TableFile ("USR:SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
   ' 2022.11.30: New - write data to serial USB key / adapter'
-  TableFile ("USB:" + Status.SerialNumber + "_SendDaily", TableFormatOption, TableMaxFiles, TimeToWriteTable, MinutesPerDay, min, 0, TableFileName(2))
+  TableFile ("USB:" + Status.SerialNumber + "_SendDaily", TableFormatOption, TableMaxFiles, NumOfRecords, TimeToWriteTable, min, 0, 0)
   Minimum(1, BattV,                 FP2, False, False)
   Sample(1,  Status.LithiumBattery, FP2)
   Sample(1,  WSDiag,                FP2)
@@ -296,7 +302,7 @@ DataTable(SaveFull, True, -1)
   DataInterval(0, 30, min, 10)
   'CardOut(0,    MaxNumberOfRecords)
   ' 2022.11.30: New - write data to serial USB key / adapter'
-  TableFile ("USB:" + Status.SerialNumber + "_SaveFull", TableFormatOption, TableMaxFiles, TimeToWriteTable, 30, min, 0, 0)
+  TableFile ("USB:" + Status.SerialNumber + "_SaveFull", TableFormatOption, TableMaxFiles, NumOfRecords, TimeToWriteTable, min, 0, 0)
   Average(1,    BattV,          FP2,   False)
   Average(1,    PTemp_C,        FP2,   False)
   Average(1,    AirTC,          FP2,   False)
@@ -331,7 +337,7 @@ DataTable(SaveStatusCF, True, -1)
   'WK, 2020.09.28, Check logger status
   'CardOut(0,    MaxNumberOfRecords)
   ' 2022.11.30: New - write data to serial USB key / adapter'
-  TableFile ("USB:" + Status.SerialNumber + "_SaveStatusCF", TableFormatOption, TableMaxFiles, TimeToWriteTable, 30, min, 0, 0)
+  TableFile ("USB:" + Status.SerialNumber + "_SaveStatusCF", TableFormatOption, TableMaxFiles, NumOfRecords, TimeToWriteTable, min, 0, 0)
   Sample(1, Status.CardStatus, String)
   Sample(1, Status.WatchdogErrors, Long)
   Sample(1, Status.SkippedScan, Long)
@@ -356,7 +362,7 @@ DataTable(RainHiRes, True, -1)
   DataEvent(1, TsinceRain < 6, TsinceRain > 30, 0)
   'CardOut(0,   MaxNumberOfRecords)
   ' 2022.11.30: New - write data to serial USB key / adapter'
-  TableFile ("USB:" + Status.SerialNumber + "_RainHiRes", TableFormatOption, TableMaxFiles, TimeToWriteTable, 5, min, 0, 0)
+  TableFile ("USB:" + Status.SerialNumber + "_RainHiRes", TableFormatOption, TableMaxFiles, NumOfRecords, TimeToWriteTable, min, 0, 0)
   Totalize(1,  Rain_mm, FP2, False)
   Sample(1,    VWC,     FP2)
   Sample(1,    GrTemp,  FP2)
