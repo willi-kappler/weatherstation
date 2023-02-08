@@ -163,7 +163,7 @@ Const TableFormatOption = 0
 Const TableMaxFiles = 0
 
 '0 means use time intervall instead of number of records
-Const NumOfRecords
+Const NumOfRecords = 0
 
 Const HourTableWrite = 12
 Const MinuteTableWrite = 10
