@@ -160,7 +160,7 @@ Const TableFormatOption = 0
 
 '-1 means determine space on the flash storage automatically.
 '0 means overwrite the same file each time
-Const TableMaxFiles = 0
+Const TableMaxFiles = -1
 
 '0 means use time intervall instead of number of records
 Const NumOfRecords = 0
